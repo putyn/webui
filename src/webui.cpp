@@ -1,4 +1,7 @@
 #include "webui.h"
+extern "C" {
+	#include "user_interface.h"
+}
 
 //web server and dns server
 AsyncWebServer server(80);
@@ -15,6 +18,7 @@ void wifi_setup() {
   WiFi.mode(WIFI_STA);
   
   //check to see if we have config file
+  Serial.println();
   Serial.println(F("[WiFi] checking to see if we have new config..."));
   if (SPIFFS.exists("/wifi.dat")) {
     //read wifi settings from file
@@ -24,7 +28,7 @@ void wifi_setup() {
     SPIFFS.remove("/wifi.dat");
   } else {
     //try to connect to previous network if any else start in AP mode
-    Serial.println(F("Connecting to existing network..."));
+    Serial.println(F("[WiFi] connecting to existing network..."));
     WiFi.begin();
   }
 
@@ -32,7 +36,7 @@ void wifi_setup() {
     Serial.printf("[WiFi] successfully connected to ssid: %s\n", WiFi.SSID().c_str());
     Serial.printf("[WiFi] IP addess: %s\n", WiFi.localIP().toString().c_str());
   } else {
-    Serial.println("Configuring access point...");
+    Serial.println(F("[WiFi] configuring access point..."));
     WiFi.mode(WIFI_AP_STA);
     WiFi.disconnect();
     if (WiFi.softAP(settings.hostname)) {
@@ -73,14 +77,16 @@ void web_setup() {
 	server.begin();
 }
 
-/*
-	dummy wrapper for dns requests
-*/
+/**
+ *	dummy wrapper for dns requests
+ */
 void webui_dns_requests()  {
 	dns_server.processNextRequest();
 }
 
 void fs_setup() {
+	
+	Serial.println();
 	if (SPIFFS.begin()) {
 		Serial.println(F("[FS] file system opened, generating file list"));
 		
@@ -104,6 +110,8 @@ void fs_setup() {
 		settings.reboot = false;
 		settings.soft_ap = false;
 		settings.online = false;
+		settings.update_time = false;
+		settings.update_display = false;
   
 		
 	} else {
@@ -111,9 +119,9 @@ void fs_setup() {
 		while(1);
 	}
 } 
- /*
-  * some system information
-  */
+/**
+ * some system information
+ */
 void handle_overview(AsyncWebServerRequest *request) {
 
   String json_resp;
@@ -132,7 +140,7 @@ void handle_overview(AsyncWebServerRequest *request) {
   
   request->send(200, "text/json", json_resp);
 }
-/*
+/**
  * handle wifi setting save
  */
 void handle_wifi_save(AsyncWebServerRequest *request) {
@@ -155,7 +163,7 @@ void handle_wifi_save(AsyncWebServerRequest *request) {
   }
   request->send(200, "text/json", json_resp);
 }
-/*
+/**
  * Handle [GET] /wifi
  * returns wifi status
  * available network list
@@ -185,7 +193,7 @@ void handle_wifi(AsyncWebServerRequest *request) {
   json_resp += "]}";
   request->send(200, "text/json", json_resp);
 }
-/*
+/**
  * placeholder template for time, untill its finished
  */
 void handle_time(AsyncWebServerRequest *request) {
@@ -223,9 +231,11 @@ void handle_time_save(AsyncWebServerRequest *request) {
   }
   request->send(200, "text/json", json_resp);
 }
-
-//helper functions
-//format bytes
+/*
+ * helper functions
+ *
+ * return size of file human readable
+ */
 String formatBytes(size_t bytes) {
   if (bytes < 1024) {
     return String(bytes) + "B";
@@ -237,9 +247,12 @@ String formatBytes(size_t bytes) {
     return String(bytes / 1024.0 / 1024.0 / 1024.0) + "GB";
   }
 }
-//rssi to procentage
-int rssi2quality(int rssi) {
-  int quality;
+/*
+ * rssi to quality for sorting networks
+ * based on http://www.speedguide.net/faq/how-does-rssi-dbm-relate-to-signal-quality-percent-439
+ */
+uint8_t rssi2quality(int16_t rssi) {
+  uint8_t quality;
 
   if ( rssi <= -100) {
     quality = 0;
@@ -250,7 +263,10 @@ int rssi2quality(int rssi) {
   }
   return quality;
 }
-
+/*
+ * helper function for saving data structures to file
+ * havely based on  https://github.com/letscontrolit/ESPEasy/blob/mega/src/Misc.ino#L767
+ */
 boolean save_file(char* fname, byte* memAddress, int datasize){
 
   fs::File f = SPIFFS.open(fname, "w+");
@@ -264,7 +280,10 @@ boolean save_file(char* fname, byte* memAddress, int datasize){
   }
   return true;
 }
-
+/*
+ * helper function for reading data structures from file
+ * havely based on  https://github.com/letscontrolit/ESPEasy/blob/mega/src/Misc.ino#L801
+ */
 void read_file(char* fname, byte* memAddress, int datasize) {
   fs::File f = SPIFFS.open(fname, "r+");
   if (f) {
@@ -275,4 +294,104 @@ void read_file(char* fname, byte* memAddress, int datasize) {
     }
     f.close();
   }
+}
+
+/** 
+ * ntp_time
+ */
+WiFiUDP ntp;
+#define NTP_LOCAL_PORT 8266
+#define NTP_PACKET_SIZE 48
+#define NTP_TIMESTAMP_DELTA 2208988800UL //Diff btw a UNIX timestamp (Starting Jan, 1st 1970) and a NTP timestamp (Starting Jan, 1st 1900)
+#define NTP_UPDATE 15 * 60 * 1000 //15 min 
+ 
+/**
+ * get time via NTP
+ * returns time in the custom structure
+ * based on https://www.arduino.cc/en/Tutorial/UdpNTPClient
+ *			http://playground.arduino.cc/Code/NTPclient
+ */
+uint32_t ntp_get_time() {
+  
+	//start udp client
+	ntp.begin(NTP_LOCAL_PORT);
+  
+	//debug info
+	Serial.printf("[NTP] UDP client on port: %d\n", ntp.localPort());
+  
+	//ntp ip
+	IPAddress ntp_server_ip;
+  
+	//ntp buffer
+	uint8_t ntp_packet[NTP_PACKET_SIZE];
+	memset(ntp_packet, 0, NTP_PACKET_SIZE);
+  
+	//time
+	uint32_t temp_seconds = 0;
+  
+	//get ip from the pool
+	if(!WiFi.hostByName(settings.time_server, ntp_server_ip)) {
+		Serial.printf("[NTP] can't get ip for host %s\n", settings.time_server);
+		return 0;  
+	}
+  
+	//debug info
+	Serial.printf("[NTP] server IP from pool: %s\n",ntp_server_ip.toString().c_str());
+  
+	//mk ntp packet
+	ntp_packet[0] = 0xE3;
+	ntp_packet[1] = 0x00;
+	ntp_packet[2] = 0x06;
+	ntp_packet[3] = 0xEC;
+  
+	ntp.beginPacket(ntp_server_ip, 123);
+	ntp.write(ntp_packet, NTP_PACKET_SIZE);
+	ntp.endPacket();
+
+	//wait until we get a packet with timeout
+	uint32_t ntp_time_out = millis();
+	boolean ntp_got_packet = false;
+	while (!(millis() > ntp_time_out + 5000)) {
+		if(ntp.parsePacket() == NTP_PACKET_SIZE) {
+			Serial.printf("[NTP] got NTP packet in %d\n",millis() - ntp_time_out);
+			ntp_got_packet = true;
+			break;
+		}
+	}
+
+  if(!ntp_got_packet) {
+    Serial.println(F("[NTP] didn't get a message from the server, closing connection"));
+    settings.next_ntp_update = millis() + 60 * 1000; //force update in 1 min
+    ntp.stop();
+    return 0;
+  }
+  
+  //read the packet
+  memset(ntp_packet,0, NTP_PACKET_SIZE);
+  ntp.read(ntp_packet, NTP_PACKET_SIZE);
+  
+  /*
+  uint8_t idx_pkt;
+  for(idx_pkt = 0; idx_pkt < NTP_PACKET_SIZE; idx_pkt++)
+	Serial.printf("Pkt %d=0x%x\n", idx_pkt, ntp_packet[idx_pkt]);
+  */
+
+  //NTP time, seconds since Jan, 1st 1900
+  temp_seconds = (word(ntp_packet[40], ntp_packet[41])) << 16 | word(ntp_packet[42], ntp_packet[43]); 
+  
+  //Unix time, seconds since Jan, 1st 1970 + time zone +/- dst
+  temp_seconds = temp_seconds - NTP_TIMESTAMP_DELTA + settings.time_zone + settings.time_dst;
+  
+  /*
+  // hour, minute and second:
+  tmp_time.hours = (epoch  % 86400L) / 3600;
+  tmp_time.minutes = (epoch  % 3600) / 60;
+  tmp_time.seconds = epoch  % 60;
+  */
+  
+  //set next ntp update
+  settings.next_ntp_update = millis() + NTP_UPDATE;
+  ntp.stop();
+  
+  return temp_seconds;
 }

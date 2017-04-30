@@ -7,23 +7,22 @@
 	<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
 	<meta name="description" content="html5 bootstrap webui with ESP8266">
 	<meta name="author" content="Vlad Conut">
-	<meta name="theme-color" content="#333">
+	<meta name="theme-color" content="#e95420">
 	<link rel="icon" href="img/favicon.ico">
-	<title>Big Seven</title>
+	<title>NAKED Nixie</title>
 	<!-- build:css style.css -->
 	<link href="css/bootstrap.css" rel="stylesheet">
-	<link href="css/bootstrap-theme.css" rel="stylesheet">
-	<link href="css/roboto.css" rel="stylesheet">
+	<link href="css/ubuntu.css" rel="stylesheet">
 	<link href="css/nouislider.css" rel="stylesheet">
 	<link href="css/nprogress.css" rel="stylesheet">
 	<link href="css/dashboard.css" rel="stylesheet">
 	<!-- build:css style.css -->
 </head>
 <body>
-	<nav class="navbar navbar-inverse navbar-fixed-top">
+	<nav class="navbar navbar-default navbar-fixed-top">
 		<div class="container-fluid">
 			<div class="navbar-header">
-				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar"> <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span> </button> <a class="navbar-brand" href="/">Big Seven</a> </div>
+				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar"> <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span> </button> <a class="navbar-brand" href="/">NAKED Nixie</a></div>
 			<div id="navbar" class="navbar-collapse collapse">
 				<ul class="nav navbar-nav navbar-right visible-xs-block">
 					<li><a href="#overview"> <span class="glyphicon glyphicon-dashboard"></span> Overview </a></li>
@@ -62,7 +61,7 @@
 						<!-- dynamically loaded -->
 					</div>
 					<div class="form-group text-center">
-						<button type="button" class="btn btn-default" id="btn_refresh"> <span class="glyphicon glyphicon-refresh"></span> Refresh list </button>
+						<button type="button" class="btn btn-primary" id="btn_refresh"> <span class="glyphicon glyphicon-refresh"></span> Refresh list </button>
 					</div>
 					<div class="modal fade" id="network_setup" tabindex="-1" role="dialog">
 						<div class="modal-dialog" role="document">
@@ -162,7 +161,7 @@
 						</div>
 					</div>
 					<div class="form-group text-center">
-						<button type="button" class="btn btn-default" id="btn_save"> <span class="glyphicon glyphicon-ok"></span> Save </button>
+						<button type="button" class="btn btn-primary" id="btn_save"> <span class="glyphicon glyphicon-ok"></span> Save </button>
 					</div>
 				</div>
 				<div id="container_hw" class="hidden">
@@ -190,8 +189,8 @@
 										<input type="text" class="form-control" readonly>
 										<div class="input-group-btn">
 											<input type="file" id="fw_file" style="display: none;">
-											<button class="btn btn-default" id="btn_browse"><span class="glyphicon glyphicon-folder-open"></span></button>
-											<button class="btn btn-default" id="btn_clear"><span class="glyphicon glyphicon glyphicon-remove"></span></button>
+											<button class="btn btn-primary" id="btn_browse"><span class="glyphicon glyphicon-folder-open"></span></button>
+											<button class="btn btn-primary" id="btn_clear"><span class="glyphicon glyphicon glyphicon-remove"></span></button>
 										</div>
 									</div>
 								</div>	
@@ -236,7 +235,6 @@
 					}
 			});
 			$("#brightness_slider")[0].noUiSlider.on("update", function(values, handle) {
-				console.log(values[handle]);
 				if(values[handle] < 5) {
 					$("#brightness_slider_val").html("Value: 5%");
 					$("#brightness_slider")[0].noUiSlider.set(5);
