@@ -9,7 +9,7 @@ DNSServer dns_server;
 
 wifi_settings_t wifi;
 settings_t settings;
-
+extern uint32_t unix_time;
 
 void wifi_setup() {
 	
@@ -66,9 +66,9 @@ void web_setup() {
 		request->redirect("/");
 	});
 	
+	server.on("/overview", HTTP_GET,  handle_overview);
 	server.on("/wifi", HTTP_GET,  handle_wifi);
 	server.on("/time", HTTP_GET,  handle_time);
-	server.on("/overview", HTTP_GET,  handle_overview);
 	server.on("/wifi", HTTP_POST,  handle_wifi_save);
 	server.on("/time", HTTP_POST,  handle_time_save);
 	server.serveStatic("/", SPIFFS, "/").setCacheControl("max-age:600");
@@ -78,7 +78,7 @@ void web_setup() {
 }
 
 /**
- *	dummy wrapper for dns requests
+ * dummy wrapper for dns requests
  */
 void webui_dns_requests()  {
 	dns_server.processNextRequest();
@@ -120,7 +120,10 @@ void fs_setup() {
 	}
 } 
 /**
- * some system information
+ * callback for /overview GET
+ * returns system information
+ * json format
+ * based on https://bitbucket.org/xoseperez/espurna/src/6969ee84a09827b0d146c09b08ad5449357d13c6/code/espurna/espurna.ino?at=master&fileviewer=file-view-default#espurna.ino-115
  */
 void handle_overview(AsyncWebServerRequest *request) {
 
@@ -141,7 +144,9 @@ void handle_overview(AsyncWebServerRequest *request) {
   request->send(200, "text/json", json_resp);
 }
 /**
- * handle wifi setting save
+ * callback for /wifi POST
+ * saves wifi settings to file
+ * json format
  */
 void handle_wifi_save(AsyncWebServerRequest *request) {
   //json response
@@ -164,9 +169,9 @@ void handle_wifi_save(AsyncWebServerRequest *request) {
   request->send(200, "text/json", json_resp);
 }
 /**
- * Handle [GET] /wifi
- * returns wifi status
- * available network list
+ * callback for /wifi GET
+ * returns network status and available network list
+ * json format
  */
 void handle_wifi(AsyncWebServerRequest *request) {
 
@@ -177,7 +182,7 @@ void handle_wifi(AsyncWebServerRequest *request) {
   if ((WiFi.getMode() & WIFI_AP_STA) == WIFI_AP_STA) {
     json_resp = "{\"status\":{\"Mode\":\"Access Point\",\"IP\":\"" + WiFi.softAPIP().toString() + "\",\"Hostname\":\"" + WiFi.hostname() + "\"},\"networks\":[";
   } else {
-    json_resp = "{\"status\":{\"Mode\":\"Client\",\"SSID\":\"" + WiFi.SSID() + "\",\"IP\":\"" + WiFi.localIP().toString() + "\",\"Hostname\":\"" + WiFi.hostname() + "\"},\"networks\":[";
+    json_resp = "{\"status\":{\"Mode\":\"Station\",\"SSID\":\"" + WiFi.SSID() + "\",\"IP\":\"" + WiFi.localIP().toString() + "\",\"Hostname\":\"" + WiFi.hostname() + "\"},\"networks\":[";
   }
 
   found_networks = WiFi.scanComplete();
@@ -194,7 +199,9 @@ void handle_wifi(AsyncWebServerRequest *request) {
   request->send(200, "text/json", json_resp);
 }
 /**
- * placeholder template for time, untill its finished
+ * callback for /time GET
+ * returns saved time settings
+ * json format
  */
 void handle_time(AsyncWebServerRequest *request) {
   
@@ -209,7 +216,12 @@ void handle_time(AsyncWebServerRequest *request) {
   json_resp +=  "\"time_dst\": "+ String(settings.time_dst) +"}";
   request->send(200, "text/json", json_resp);
 }
-
+/**
+ * callback for /time POST
+ * saves time settings from client
+ * returns messages based on data submited
+ * json format
+ */
 void handle_time_save(AsyncWebServerRequest *request) {
   //json response
   String json_resp;
@@ -231,9 +243,8 @@ void handle_time_save(AsyncWebServerRequest *request) {
   }
   request->send(200, "text/json", json_resp);
 }
-/*
+/**
  * helper functions
- *
  * return size of file human readable
  */
 String formatBytes(size_t bytes) {
@@ -247,7 +258,7 @@ String formatBytes(size_t bytes) {
     return String(bytes / 1024.0 / 1024.0 / 1024.0) + "GB";
   }
 }
-/*
+/**
  * rssi to quality for sorting networks
  * based on http://www.speedguide.net/faq/how-does-rssi-dbm-relate-to-signal-quality-percent-439
  */
@@ -263,7 +274,7 @@ uint8_t rssi2quality(int16_t rssi) {
   }
   return quality;
 }
-/*
+/**
  * helper function for saving data structures to file
  * havely based on  https://github.com/letscontrolit/ESPEasy/blob/mega/src/Misc.ino#L767
  */
@@ -277,10 +288,11 @@ boolean save_file(char* fname, byte* memAddress, int datasize){
       pointerToByteToSave++;
     }
     f.close();
-  }
-  return true;
+	return true;
+  } else 
+	return false;
 }
-/*
+/**
  * helper function for reading data structures from file
  * havely based on  https://github.com/letscontrolit/ESPEasy/blob/mega/src/Misc.ino#L801
  */
@@ -296,21 +308,19 @@ void read_file(char* fname, byte* memAddress, int datasize) {
   }
 }
 
-/** 
- * ntp_time
- */
-WiFiUDP ntp;
-#define NTP_LOCAL_PORT 8266
-#define NTP_PACKET_SIZE 48
-#define NTP_TIMESTAMP_DELTA 2208988800UL //Diff btw a UNIX timestamp (Starting Jan, 1st 1970) and a NTP timestamp (Starting Jan, 1st 1900)
-#define NTP_UPDATE 15 * 60 * 1000 //15 min 
- 
 /**
  * get time via NTP
  * returns time in the custom structure
  * based on https://www.arduino.cc/en/Tutorial/UdpNTPClient
  *			http://playground.arduino.cc/Code/NTPclient
  */
+ 
+WiFiUDP ntp;
+#define NTP_LOCAL_PORT 8266
+#define NTP_PACKET_SIZE 48
+#define NTP_TIMESTAMP_DELTA 2208988800UL //Diff btw a UNIX timestamp (Starting Jan, 1st 1970) and a NTP timestamp (Starting Jan, 1st 1900)
+#define NTP_UPDATE 3 * 60 * 1000 //3min for debug 15 min, std
+  
 uint32_t ntp_get_time() {
   
 	//start udp client
@@ -332,7 +342,7 @@ uint32_t ntp_get_time() {
 	//get ip from the pool
 	if(!WiFi.hostByName(settings.time_server, ntp_server_ip)) {
 		Serial.printf("[NTP] can't get ip for host %s\n", settings.time_server);
-		return 0;  
+		return unix_time;  
 	}
   
 	//debug info
@@ -359,39 +369,30 @@ uint32_t ntp_get_time() {
 		}
 	}
 
-  if(!ntp_got_packet) {
-    Serial.println(F("[NTP] didn't get a message from the server, closing connection"));
-    settings.next_ntp_update = millis() + 60 * 1000; //force update in 1 min
-    ntp.stop();
-    return 0;
-  }
+	if(!ntp_got_packet) {
+		Serial.println(F("[NTP] didn't get a message from the server, closing connection"));
+		settings.next_ntp_update = millis() + 60 * 1000; //force update in 1 min
+		ntp.stop();
+		return unix_time;
+	}
   
-  //read the packet
-  memset(ntp_packet,0, NTP_PACKET_SIZE);
-  ntp.read(ntp_packet, NTP_PACKET_SIZE);
+	//read the packet
+	memset(ntp_packet,0, NTP_PACKET_SIZE);
+	ntp.read(ntp_packet, NTP_PACKET_SIZE);
   
-  /*
-  uint8_t idx_pkt;
-  for(idx_pkt = 0; idx_pkt < NTP_PACKET_SIZE; idx_pkt++)
-	Serial.printf("Pkt %d=0x%x\n", idx_pkt, ntp_packet[idx_pkt]);
-  */
-
-  //NTP time, seconds since Jan, 1st 1900
-  temp_seconds = (word(ntp_packet[40], ntp_packet[41])) << 16 | word(ntp_packet[42], ntp_packet[43]); 
+	//NTP time, seconds since Jan, 1st 1900
+	temp_seconds = (word(ntp_packet[40], ntp_packet[41])) << 16 | word(ntp_packet[42], ntp_packet[43]); 
   
-  //Unix time, seconds since Jan, 1st 1970 + time zone +/- dst
-  temp_seconds = temp_seconds - NTP_TIMESTAMP_DELTA + settings.time_zone + settings.time_dst;
+	//Unix time, seconds since Jan, 1st 1970 + time zone +/- dst
+	temp_seconds = temp_seconds - NTP_TIMESTAMP_DELTA + settings.time_zone + settings.time_dst;
   
-  /*
-  // hour, minute and second:
-  tmp_time.hours = (epoch  % 86400L) / 3600;
-  tmp_time.minutes = (epoch  % 3600) / 60;
-  tmp_time.seconds = epoch  % 60;
-  */
+	//diff
+	if(unix_time > 0)
+		Serial.printf("[NTP] diff between local time and ntp %d\n", temp_seconds - unix_time);
   
-  //set next ntp update
-  settings.next_ntp_update = millis() + NTP_UPDATE;
-  ntp.stop();
+	//set next ntp update
+	settings.next_ntp_update = millis() + NTP_UPDATE;
+	ntp.stop();
   
-  return temp_seconds;
+	return temp_seconds;
 }
