@@ -248,6 +248,9 @@
 			
 				var page = $(this).attr("href").replace("#", "");
 				
+				if(page == "/reboot")
+					return;
+				
 				//remove any active menu
 				$(this).parent("li").siblings().removeClass("active");
 				//set current menu active
@@ -333,8 +336,13 @@
 				$(this).siblings(':file').val();
 			});
 			//reboot check
-			$("a[href=reboot]").on("click", function () {
-				
+			$("a[href*='reboot']").on("click", function (event) {
+					//prevent location change
+					event.preventDefault();
+					//check if user really wants to reboot
+					if(confirm("Are you sure you want to reboot the device?")) {
+						window.location = $(this).attr('href');
+					}
 			});
 			
 			//post requests
