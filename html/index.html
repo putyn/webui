@@ -7,7 +7,7 @@
 	<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
 	<meta name="description" content="html5 bootstrap webui with ESP8266">
 	<meta name="author" content="Vlad Conut">
-	<meta name="theme-color" content="#e95420">
+	<meta name="theme-color" content="#EB6536">
 	<link rel="icon" href="img/favicon.ico">
 	<title>NAKED Nixie</title>
 	<!-- build:css style.css -->
@@ -159,6 +159,19 @@
 								</div>
 							</div>
 						</div>
+						<div class="list-group-item">
+							<div class="row">
+								<div class="col-xs-4 col-md-3 text-right"> <strong>Sync with system time:</strong> </div>
+								<div class="col-xs-8 col-md-9 text-left">
+									<div class="input-group">
+										<input type="text" class="form-control" readonly id="time_system_time">
+										<div class="input-group-addon">
+											<input type="checkbox" id="time_system_update"  style="margin-top: 2px;"> 
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
 					</div>
 					<div class="form-group text-center">
 						<button type="button" class="btn btn-primary" id="btn_save"> <span class="glyphicon glyphicon-ok"></span> Save </button>
@@ -295,7 +308,7 @@
 				$("#network_setup").modal({
 					keyboard: true
 				});
-			}),
+			});
 			
 			//focus password input after modal
 			$("#network_setup").on("shown.bs.modal", function() {
@@ -389,11 +402,16 @@
 				NProgress.start();
 				
 				//get values
-				var  time_server_val = $("#time_server").val();
-				var  time_zone_val = $("#time_zone").val();
-				var  time_dst_val = $("#time_dst").val();
+				var	time_server_val = $("#time_server").val();
+				var	time_zone_val = $("#time_zone").val();
+				var	time_dst_val = $("#time_dst").val();
+				var time_system_time_val = 0;
 				
-				$.post("/time", {time_server: time_server_val, time_zone: time_zone_val, time_dst: time_dst_val}, function(data) {
+				if($("#time_system_update").is(":checked")) {
+						time_system_time_val = Math.floor(Date.now() / 1000);
+				}
+				
+				$.post("/time", {time_server: time_server_val, time_zone: time_zone_val, time_dst: time_dst_val, time_system_time: time_system_time_val }, function(data) {
 				
 					//pretty messages
 					if(data.error) {
@@ -471,6 +489,14 @@
 					$("#time_server").val(data.time_server);
 					$("#time_zone option[value='" + data.time_zone + "']").prop("selected", true);
 					$("#time_dst option[value='" + data.time_dst + "']").prop("selected", true);
+					
+					//mini clock
+					setInterval(function () {
+						var d = new Date();
+						var d_string = ("0" + d.getDate()).slice(-2) + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + d.getFullYear() + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":" + ("0" + d.getSeconds()).slice(-2);
+						$("#time_system_time").val(d_string);
+					}, 1000);
+					
 				}).fail(function(xhr, status, error) {
 					$("#container_time").html('<h3 class="page-header">Time Configuration</h3><div class="list-group"><div class="list-group-item list-group-item-danger"><strong>Oh Snap!</strong> Something went wrong: <strong>'+xhr.status+' (' + error + ')</strong></strong></div></div>');
 				}).always(function() {

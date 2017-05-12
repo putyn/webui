@@ -9,7 +9,7 @@ DNSServer dns_server;
 
 wifi_settings_t wifi;
 settings_t settings;
-extern uint32_t unix_time;
+extern ctime_t local_time;
 
 void wifi_setup() {
 	
@@ -135,7 +135,7 @@ void handle_overview(AsyncWebServerRequest *request) {
   json_resp += "\"CPU frequency\": \"" + String(ESP.getCpuFreqMHz()) + " MHz\",";
   json_resp += "\"Last reset reason\": \"" + ESP.getResetReason() + "\",";
   json_resp += "\"Internet\": \"" + String(settings.online ? "online" : "offline") + "\",";
-  json_resp += "\"Uptime\": \"" + String(millis()/1000) + "s\",";
+  json_resp += "\"Uptime\": \"" + mkuptime(settings.uptime) + "\",";
   json_resp += "\"Free heap\": \"" + formatBytes(ESP.getFreeHeap()) + "\",";
   json_resp += "\"Storage size\": \"" + formatBytes(ESP.getFlashChipSize()) + "\",";
   json_resp += "\"Firmware size\": \"" + formatBytes(ESP.getSketchSize()) + "\",";
@@ -225,13 +225,24 @@ void handle_time(AsyncWebServerRequest *request) {
 void handle_time_save(AsyncWebServerRequest *request) {
   //json response
   String json_resp;
+  uint32_t sync_time;
   
-  if (request->hasParam("time_server", true) && request->hasParam("time_zone", true) && request->hasParam("time_dst", true)) {
+  if (request->hasParam("time_server", true) && request->hasParam("time_zone", true) && request->hasParam("time_dst", true) && request->hasParam("time_system_time", true) ) {
     
-    //get time_server, time_zone, time_dst from POST request
+    //get time_server, time_zone, time_dst, time_system_time from POST request
     strncpy(settings.time_server, request->getParam("time_server", true)->value().c_str(), sizeof (settings.time_server));
     settings.time_zone = request->getParam("time_zone", true)->value().toInt();
     settings.time_dst  = request->getParam("time_dst", true)->value().toInt();
+    sync_time  = request->getParam("time_system_time", true)->value().toInt();
+    
+    if(sync_time > 0) {
+		//add time_zone + time_dst to received time
+    	sync_time = sync_time + settings.time_zone + settings.time_dst; 
+    	local_time.millis = 0;
+    	local_time.hours = (sync_time  % 86400L) / 3600;
+		local_time.minutes = (sync_time  % 3600) / 60;
+		local_time.seconds = sync_time % 60;	
+    } 
 
     if (save_file((char *)"/settings.dat", (byte *)&settings, sizeof(struct settings_t))) {
       json_resp = F("{\"error\":false, \"message\": \"\"}");
@@ -307,7 +318,22 @@ void read_file(char* fname, byte* memAddress, int datasize) {
     f.close();
   }
 }
-
+/**
+ * helper function for converting uptime in a more readable way
+ */
+String mkuptime(uint32_t uptime)   {
+	uint16_t days;
+	uint8_t hours;
+	uint8_t minutes;
+	uint8_t seconds;
+	
+	days = uptime / 86400L;
+	hours = (uptime  % 86400L) / 3600;
+	minutes = (uptime  % 3600) / 60;
+	seconds = uptime % 60;
+	
+	return String(days) + " day(s) "+ String(hours) + ":"+ String(minutes) +":"+ String(seconds);
+}
 /**
  * get time via NTP
  * returns time in the custom structure
@@ -321,7 +347,7 @@ WiFiUDP ntp;
 #define NTP_TIMESTAMP_DELTA 2208988800UL //Diff btw a UNIX timestamp (Starting Jan, 1st 1970) and a NTP timestamp (Starting Jan, 1st 1900)
 #define NTP_UPDATE 3 * 60 * 1000 //3min for debug 15 min, std
   
-uint32_t ntp_get_time() {
+int8_t ntp_get_time(ctime_t *temp_time) {
   
 	//start udp client
 	ntp.begin(NTP_LOCAL_PORT);
@@ -342,7 +368,7 @@ uint32_t ntp_get_time() {
 	//get ip from the pool
 	if(!WiFi.hostByName(settings.time_server, ntp_server_ip)) {
 		Serial.printf("[NTP] can't get ip for host %s\n", settings.time_server);
-		return unix_time;  
+		return -1;  
 	}
   
 	//debug info
@@ -373,7 +399,7 @@ uint32_t ntp_get_time() {
 		Serial.println(F("[NTP] didn't get a message from the server, closing connection"));
 		settings.next_ntp_update = millis() + 60 * 1000; //force update in 1 min
 		ntp.stop();
-		return unix_time;
+		return -2;
 	}
   
 	//read the packet
@@ -386,13 +412,21 @@ uint32_t ntp_get_time() {
 	//Unix time, seconds since Jan, 1st 1970 + time zone +/- dst
 	temp_seconds = temp_seconds - NTP_TIMESTAMP_DELTA + settings.time_zone + settings.time_dst;
   
+	/*
 	//diff
-	if(unix_time > 0)
-		Serial.printf("[NTP] diff between local time and ntp %d\n", temp_seconds - unix_time);
-  
+	if(temp_time->unix_time > 0)
+		Serial.printf("[NTP] diff between local time and ntp %d\n", temp_seconds - temp_time->unix_time);
+	*/
+	
 	//set next ntp update
 	settings.next_ntp_update = millis() + NTP_UPDATE;
 	ntp.stop();
+	
+	//retrun variable in custom structure
+	//temp_time->unix_time = temp_seconds;
+	temp_time->hours = (temp_seconds  % 86400L) / 3600;
+	temp_time->minutes = (temp_seconds  % 3600) / 60;
+	temp_time->seconds = temp_seconds % 60;
   
-	return temp_seconds;
+	return 0;
 }

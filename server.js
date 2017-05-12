@@ -39,7 +39,7 @@ app.get("/wifi", function(req,res) {
 	var json_response = {};
 
 	//wifi status
-	json_response["status"] = {"Status": "connected", "Hostname": "big_seven_0001", "SSID": "c86b6e2bbd8fba08421b9a710bb56756", "IP":"192.168.88.88"};
+	json_response["status"] = {"Mode": "Station", "Hostname": "esp_webui_000001", "SSID": "c86b6e2bbd8fba08421b9a710bb56756", "IP":"192.168.88.88"};
 	//wifi networks
 	//json_response["networks"] = [];
 	json_response["networks"] = [{"ssid":"5a105e8b9d40e1329780d62ea2265d8a", "auth":1, "quality": 90}, {"ssid":"ad0234829205b9033196ba818f7a872b", "auth":1, "quality": 85}, {"ssid":"8ad8757baa8564dc136c1e07507f4a98", "auth":0, "quality": 90}];
@@ -111,6 +111,7 @@ app.post("/time", function(req,res) {
 	var ntp_server = req.body.time_server;
 	var time_zone = req.body.time_zone;
 	var time_dst = req.body.time_dst;
+	var time_system_time = req.body.time_system_time
 	var json_response;
 
 	//fail response
@@ -124,7 +125,7 @@ app.post("/time", function(req,res) {
 		res.status(status_code);
 		res.json(json_response);
 	}, random_wait * Math.random());
-	console.log("[POST] /time ntp server: "+ntp_server+", time zone: "+time_zone+", dst: "+time_dst+"")
+	console.log("[POST] /time ntp server: "+ntp_server+", time zone: "+time_zone+", dst: "+time_dst+", system time:" + time_system_time);
 });
 
 app.listen(8080);
