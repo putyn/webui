@@ -322,6 +322,7 @@ void read_file(char* fname, byte* memAddress, int datasize) {
  * helper function for converting uptime in a more readable way
  */
 String mkuptime(uint32_t uptime)   {
+	char buffer[20] = {0};
 	uint16_t days;
 	uint8_t hours;
 	uint8_t minutes;
@@ -332,7 +333,9 @@ String mkuptime(uint32_t uptime)   {
 	minutes = (uptime  % 3600) / 60;
 	seconds = uptime % 60;
 	
-	return String(days) + " day(s) "+ String(hours) + ":"+ String(minutes) +":"+ String(seconds);
+	sprintf(buffer,"%d day(s) %02d:%02d:%02d", days, hours, minutes, seconds);
+	//return String(days) + " day(s) "+ String(hours) + ":"+ String(minutes) +":"+ String(seconds);
+	return String(buffer);
 }
 /**
  * get time via NTP
@@ -345,7 +348,7 @@ WiFiUDP ntp;
 #define NTP_LOCAL_PORT 8266
 #define NTP_PACKET_SIZE 48
 #define NTP_TIMESTAMP_DELTA 2208988800UL //Diff btw a UNIX timestamp (Starting Jan, 1st 1970) and a NTP timestamp (Starting Jan, 1st 1900)
-#define NTP_UPDATE 3 * 60 * 1000 //3min for debug 15 min, std
+#define NTP_UPDATE 15 * 60 * 1000 //3min for debug 15 min, std
   
 int8_t ntp_get_time(ctime_t *temp_time) {
   

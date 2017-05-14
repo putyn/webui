@@ -61,7 +61,7 @@ void handle_time_save(AsyncWebServerRequest *request);
  */
  
 String formatBytes(size_t bytes);
+String mkuptime(uint32_t uptime	);
 uint8_t rssi2quality(int16_t rssi);
 boolean save_file(char* fname, byte* memAddress, int datasize);
 void read_file(char* fname, byte* memAddress, int datasize);
-String mkuptime(uint32_t uptime	);
