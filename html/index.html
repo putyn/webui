@@ -231,12 +231,12 @@
 			
 			//pretty slider
 			noUiSlider.create($("#brightness_slider")[0], {
-				start: 5,
-				step: 5,
+				start: 0,
+				step: 1,
 				connect: [true, false],
 				range: {
 					'min': 0,
-					'max': 100
+					'max': 10
 				},
 				format: {
 					from: function(value) {
@@ -245,15 +245,20 @@
 					to: function(value) {
 							return parseInt(value);
 						}
-					}
-			});
-			$("#brightness_slider")[0].noUiSlider.on("update", function(values, handle) {
-				if(values[handle] < 5) {
-					$("#brightness_slider_val").html("Value: 5%");
-					$("#brightness_slider")[0].noUiSlider.set(5);
-				} else {
-					$("#brightness_slider_val").html("Value: " + values[handle] + "%");
 				}
+			});
+			
+			//send update only on set event
+			$("#brightness_slider")[0].noUiSlider.on("change", function(values, handle) {
+				console.log("Brightness value: " + values[handle]);
+				$("#brightness_slider_val").html("Value: " + values[handle]	);
+				$.post("/hw", {brightness: values[handle] }, function(data) {
+					//log the response
+					console.log(data);
+				}, "json");
+			});
+			$("#brightness_slider")[0].noUiSlider.on("slide", function(values, handle) {
+				$("#brightness_slider_val").html("Value: " + values[handle]	);
 			});
 			
 			//bind menu clicks
@@ -350,12 +355,12 @@
 			});
 			//reboot check
 			$("a[href*='reboot']").on("click", function (event) {
-					//prevent location change
-					event.preventDefault();
-					//check if user really wants to reboot
-					if(confirm("Are you sure you want to reboot the device?")) {
-						window.location = $(this).attr('href');
-					}
+				//prevent location change
+				event.preventDefault();
+				//check if user really wants to reboot
+				if(confirm("Are you sure you want to reboot the device?")) {
+					window.location = $(this).attr('href');
+				}
 			});
 			
 			//post requests
@@ -504,6 +509,16 @@
 				});
 				break;
 			case "hw":
+				$.getJSON("/hw", function (data) {
+					$("#brightness_slider")[0].noUiSlider.set(data.brightness);
+					$("#brightness_slider_val").html("Value: " + data.brightness);
+				}).fail(function(xhr, status, error) {
+					$("#container_hw").html('<h3 class="page-header">Hardware Configuration</h3><div class="list-group"><div class="list-group-item list-group-item-danger"><strong>Oh Snap!</strong> Something went wrong: <strong>'+xhr.status+' (' + error + ')</strong></strong></div></div>');
+				}).always(function() {
+					NProgress.done();
+				});
+			break;
+			default:
 				NProgress.done();
 		}
 	}

@@ -128,5 +128,24 @@ app.post("/time", function(req,res) {
 	console.log("[POST] /time ntp server: "+ntp_server+", time zone: "+time_zone+", dst: "+time_dst+", system time:" + time_system_time);
 });
 
+app.get("/hw", function(req,res) {
+	var json_response = {"brightness": 8};
+	
+	//insert some random wait
+	setTimeout( function () {
+		//simulate .fail on front end side via http code
+		res.status(status_code);
+		res.json(json_response);
+	}, random_wait * Math.random());
+	console.log("[GET] /hw");
+});
+
+app.post("/hw", function (req, res) {
+	var brightness = req.body.brightness;
+	var json_resp = {"brightness": brightness};
+	res.status(status_code);
+	res.json(json_resp);
+});
+
 app.listen(8080);
 console.log('Application server up and running on port 8080');

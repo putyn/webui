@@ -16,6 +16,7 @@ struct wifi_settings_t {
 struct settings_t {
   char time_server[32];
   char hostname[32];
+  uint8_t brightness;
   int16_t time_zone;
   int16_t time_dst;
   uint32_t next_ntp_update;
@@ -48,6 +49,10 @@ void webui_dns_requests();
 int8_t ntp_get_time(ctime_t *temp_time);
 
 /*
+ * extern functions
+ */
+extern void hw_set_brightness(uint8_t brightness);
+/*
  * handles for webserver
  */
 void handle_overview(AsyncWebServerRequest *request);
@@ -55,7 +60,8 @@ void handle_wifi(AsyncWebServerRequest *request);
 void handle_wifi_save(AsyncWebServerRequest *request);
 void handle_time(AsyncWebServerRequest *request);
 void handle_time_save(AsyncWebServerRequest *request);
-
+void handle_hw(AsyncWebServerRequest *request);
+void handle_hw_save(AsyncWebServerRequest *request);
 /*
  * misc utility functions
  */
