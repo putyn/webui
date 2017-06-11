@@ -384,7 +384,7 @@ WiFiUDP ntp;
 #define NTP_LOCAL_PORT 8266
 #define NTP_PACKET_SIZE 48
 #define NTP_TIMESTAMP_DELTA 2208988800UL //Diff btw a UNIX timestamp (Starting Jan, 1st 1970) and a NTP timestamp (Starting Jan, 1st 1900)
-#define NTP_UPDATE 15 * 60 * 1000 //3min for debug 15 min, std
+#define NTP_UPDATE 15 * 60 //3min for debug, 15 min std
   
 int8_t ntp_get_time(ctime_t *temp_time) {
   
@@ -436,7 +436,7 @@ int8_t ntp_get_time(ctime_t *temp_time) {
 
 	if(!ntp_got_packet) {
 		Serial.println(F("[NTP] didn't get a message from the server, closing connection"));
-		settings.next_ntp_update = millis() + 60 * 1000; //force update in 1 min
+		settings.next_ntp_update = settings.uptime + 60; //force update in 1 min
 		ntp.stop();
 		return -2;
 	}
@@ -458,7 +458,7 @@ int8_t ntp_get_time(ctime_t *temp_time) {
 	*/
 	
 	//set next ntp update
-	settings.next_ntp_update = millis() + NTP_UPDATE;
+	settings.next_ntp_update = settings.uptime + NTP_UPDATE;
 	ntp.stop();
 	
 	//retrun variable in custom structure
