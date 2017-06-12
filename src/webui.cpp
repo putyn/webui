@@ -109,12 +109,14 @@ void fs_setup() {
 			Serial.printf("[FS] display brightness: %d\n", settings.brightness);
 		}
 		
-		//settings that are not saved
+		//settings that are not saved & should be reset
 		settings.reboot = false;
 		settings.soft_ap = false;
 		settings.online = false;
 		settings.update_time = false;
 		settings.update_display = false;
+		settings.next_ntp_update = 0;
+		settings.uptime = 0;
   
 		
 	} else {
