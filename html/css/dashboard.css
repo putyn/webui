@@ -111,3 +111,10 @@ div#network_available > a.list-group-item {
 	border-radius: 4px;
 	background: #EB6536;
 }
+
+/*
+ * 
+ */
+.navbar-brand {
+	font-weight:bold;
+}	

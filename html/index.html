@@ -7,7 +7,7 @@
 	<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
 	<meta name="description" content="html5 bootstrap webui with ESP8266">
 	<meta name="author" content="Vlad Conut">
-	<meta name="theme-color" content="#EB6536">
+	<meta name="theme-color" content="#F29879">
 	<link rel="icon" href="img/favicon.ico">
 	<title>NAKED Nixie</title>
 	<!-- build:css style.css -->
@@ -190,16 +190,91 @@
 								</div>
 							</div>
 						</div>
-					</div>	
-						
-					<label for="hardware_fwupgrade">Firmware upgrade</label>
+					</div>
+ 					<label for="hardware_acp">Anti Cathode Poisoning</label>
+					<div class="list-group" id="hardware_acp">
+						<div class="list-group-item">
+							<div class="row">
+								<div class="col-xs-4 col-md-3 text-right" style="padding-top:0px;"> <strong>ACP:</strong></div>
+								<div class="col-xs-8 col-md-9 text-left">
+                  <div class="input-group">
+										<div class="input-group-addon">Every</div>
+                      <select id="hw_acp_time" class="selectpicker form-control">
+													<option value="">---</option>
+													<option value="5">05 min</option>
+													<option value="10">10 min</option>
+													<option value="15">15 min</option>
+													<option value="20">20 min</option>
+													<option value="25">25 min</option>
+													<option value="30">30 min</option>
+													<option value="35">35 min</option>
+													<option value="40">40 min</option>
+													<option value="45">45 min</option>
+													<option value="50">50 min</option>
+													<option value="55">55 min</option>
+													<option value="60">60 min</option>
+												</select>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-8 col-xs-offset-4 col-md-9 col-md-offset-3 text-muted" style="padding-top:10px"><em>Mechanims for protecting tubes from cathode poisoning. </em></div>  
+              </div>
+            </div>
+          </div>
+					<label for="hardware_nightmode">Night Mode</label>
+					<div class="list-group" id="hardware_nightmode">
+						<div class="list-group-item">
+							<div class="row">
+								<div class="col-xs-4 col-md-3 text-right" style="padding-top:0px;"> <strong>Schedule:</strong></div>
+								<div class="col-xs-8 col-md-9 text-left">
+									<div class="row">
+										<div class="col-xs-6 col-md-6 text-right">
+											<div class="input-group">
+												<div class="input-group-addon hidden-xs">start</div>
+												<select id="hw_nightmode_start" class="selectpicker form-control">
+													<option value="">---</option>
+													<option value="20">20:00</option>
+													<option value="21">21:00</option>
+													<option value="22">22:00</option>
+													<option value="23">23:00</option>
+													<option value="0">00:00</option>
+													<option value="1">01:00</option>
+													<option value="2">02:00</option>
+													<option value="3">03:00</option>
+													<option value="4">04:00</option>
+												</select>
+											</div>
+										</div>
+										<div class="col-xs-6 col-md-6 text-left">
+											<div class="input-group">
+												<div class="input-group-addon hidden-xs">stop</div>
+												<select id="hw_nightmode_stop" class="selectpicker form-control">
+													<option value="">---</option>
+													<option value="6">06:00</option>
+													<option value="7">07:00</option>
+													<option value="8">08:00</option>
+													<option value="9">09:00</option>
+													<option value="10">10:00</option>
+												</select>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+              <div class="row">
+                <div class="col-xs-8 col-xs-offset-4 col-md-9 col-md-offset-3 text-muted" style="padding-top:10px"><em>Allows for dimming the clock between selected interval, in order to not distrub.</em></div>  
+              </div> 
+						</div>
+          </div>
+					<label for="hardware_fwupgrade">Firmware Upgrade</label>
 					<div class="list-group" id="hardware_fwupgrade">
 						<div class="list-group-item">
 							<div class="row">
 								<div class="col-xs-4 col-md-3 text-right"> <strong>Firmware file:</strong></div>
 								<div class="col-xs-8 col-md-9 text-left">
 									<div class="input-group">
-										<input type="text" class="form-control" readonly>
+										<input type="text" class="form-control" readonly onclick="$('#btn_browse').click()">
 										<div class="input-group-btn">
 											<input type="file" id="fw_file" style="display: none;">
 											<button class="btn btn-primary" id="btn_browse"><span class="glyphicon glyphicon-folder-open"></span></button>
@@ -262,24 +337,39 @@
 			});
 			
 			//bind menu clicks
-			$(".nav").on("click", "a", function() {
+			$(".nav").on("click", "a", function(event) {
 			
 				var page = $(this).attr("href").replace("#", "");
 				
-				if(page == "/reboot")
-					return;
-				
+				if(page == "/reboot") {
+          //prevent location change
+          event.preventDefault();
+          
+          //check if user really wants to reboot
+          if(confirm("Are you sure you want to reboot the device?")) {
+            window.location = $(this).attr('href');
+          }
+          if($(".navbar-toggle").is(":visible") && $(".navbar-right").is(":visible"))
+            $(".navbar-toggle").click();
+          return;
+        }
+        
 				//remove any active menu
 				$(this).parent("li").siblings().removeClass("active");
+        
 				//set current menu active
 				$(this).parent("li").addClass("active");
+        
 				//hide all container
 				$("div[id*=container]").addClass("hidden");
+        
 				//show container
 				$("#container_" + page).removeClass("hidden");
-				
+        
+				//hide menu
 				if($(".navbar-toggle").is(":visible") && $(".navbar-right").is(":visible"))
 					$(".navbar-toggle").click();
+          
 				//load dynamic content	
 				load_page(page);
 			});
@@ -353,16 +443,7 @@
 				$(this).parents('.input-group').find(':text').val('');
 				$(this).siblings(':file').val();
 			});
-			//reboot check
-			$("a[href*='reboot']").on("click", function (event) {
-				//prevent location change
-				event.preventDefault();
-				//check if user really wants to reboot
-				if(confirm("Are you sure you want to reboot the device?")) {
-					window.location = $(this).attr('href');
-				}
-			});
-			
+      
 			//post requests
 			//bind wifi network config
 			$("#network_setup").on("click", "button#btn_save", function(e) {
@@ -490,18 +571,23 @@
 				});
 				break;
 			case "time":
+        //mini clock
+        function mini_clock() {
+          var d = new Date();
+					var d_string = ("0" + d.getDate()).slice(-2) + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + d.getFullYear() + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":" + ("0" + d.getSeconds()).slice(-2);
+					$("#time_system_time").val(d_string);
+        }
+          mini_clock();
+				setInterval(function () {
+					mini_clock();
+				}, 1000);
+      
 				$.getJSON("/time", function(data) {
+        
 					$("#time_server").val(data.time_server);
 					$("#time_zone option[value='" + data.time_zone + "']").prop("selected", true);
 					$("#time_dst option[value='" + data.time_dst + "']").prop("selected", true);
-					
-					//mini clock
-					setInterval(function () {
-						var d = new Date();
-						var d_string = ("0" + d.getDate()).slice(-2) + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + d.getFullYear() + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":" + ("0" + d.getSeconds()).slice(-2);
-						$("#time_system_time").val(d_string);
-					}, 1000);
-					
+          
 				}).fail(function(xhr, status, error) {
 					$("#container_time").html('<h3 class="page-header">Time Configuration</h3><div class="list-group"><div class="list-group-item list-group-item-danger"><strong>Oh Snap!</strong> Something went wrong: <strong>'+xhr.status+' (' + error + ')</strong></strong></div></div>');
 				}).always(function() {
@@ -510,13 +596,33 @@
 				break;
 			case "hw":
 				$.getJSON("/hw", function (data) {
-					$("#brightness_slider")[0].noUiSlider.set(data.brightness);
-					$("#brightness_slider_val").html("Value: " + data.brightness);
+          //slider
+					$("#brightness_slider")[0].noUiSlider.set(data.hw_brightness);
+					$("#brightness_slider_val").html("Value: " + data.hw_brightness);
+          
+          //acp
+          $("#hw_acp_time option[value='" + data.hw_acp_time + "']").prop("selected", true);
+          
+          //nightmode start/stop
+          $("#hw_nightmode_start option[value='" + data.hw_nightmode_start + "']").prop("selected", true);
+          $("#hw_nightmode_stop option[value='" + data.hw_nightmode_stop + "']").prop("selected", true);
+          
 				}).fail(function(xhr, status, error) {
 					$("#container_hw").html('<h3 class="page-header">Hardware Configuration</h3><div class="list-group"><div class="list-group-item list-group-item-danger"><strong>Oh Snap!</strong> Something went wrong: <strong>'+xhr.status+' (' + error + ')</strong></strong></div></div>');
 				}).always(function() {
 					NProgress.done();
 				});
+        
+        //input-group:first-child is hidden, re-add round corners, fix for small screens
+        $("select[id*='hw_nightmode']").each(function() {
+          var fix_small_screen = {
+            "border-bottom-left-radius" : "4px",
+            "border-top-left-radius" : "4px"
+          }
+          if($(this).siblings().is(":hidden"))
+            $(this).css(fix_small_screen); 
+        });
+
 			break;
 			default:
 				NProgress.done();

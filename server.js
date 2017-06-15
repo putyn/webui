@@ -56,7 +56,7 @@ app.get("/wifi", function(req,res) {
 
 app.get("/time", function(req, res) {
 
-	var json_response = {"time_server": "eu.ntp.pool.org", "time_zone": '+7200', "time_dst": "yes"};
+	var json_response = {"time_server": "eu.ntp.pool.org", "time_zone": '+7200', "time_dst": 3600};
 
 	//insert some random wait
 	setTimeout( function () {
@@ -129,7 +129,7 @@ app.post("/time", function(req,res) {
 });
 
 app.get("/hw", function(req,res) {
-	var json_response = {"brightness": 8};
+	var json_response = {"hw_brightness": 8, "hw_acp_time":30, "hw_nightmode_start": 20, "hw_nightmode_stop":6};
 	
 	//insert some random wait
 	setTimeout( function () {
