@@ -179,6 +179,7 @@
 				</div>
 				<div id="container_hw" class="hidden">
 					<h3 class="page-header">Hardware Configuration</h3>
+					<div class="list-group" id="hw_error"></div>
 					<label for="hardware_brightness">Display Brightness</label>
 					<div class="list-group" id="hardware_brightness">
 						<div class="list-group-item">
@@ -201,24 +202,24 @@
 										<div class="input-group-addon">Every</div>
                       <select id="hw_acp_time" class="selectpicker form-control">
 													<option value="">---</option>
-													<option value="5">05 min</option>
-													<option value="10">10 min</option>
-													<option value="15">15 min</option>
-													<option value="20">20 min</option>
-													<option value="25">25 min</option>
-													<option value="30">30 min</option>
-													<option value="35">35 min</option>
-													<option value="40">40 min</option>
-													<option value="45">45 min</option>
-													<option value="50">50 min</option>
-													<option value="55">55 min</option>
-													<option value="60">60 min</option>
+													<option value="1">05 min</option>
+													<option value="2">10 min</option>
+													<option value="3">15 min</option>
+													<option value="4">20 min</option>
+													<option value="5">25 min</option>
+													<option value="6">30 min</option>
+													<option value="7">35 min</option>
+													<option value="8">40 min</option>
+													<option value="9">45 min</option>
+													<option value="10">50 min</option>
+													<option value="11">55 min</option>
+													<option value="12">60 min</option>
 												</select>
                   </div>
                 </div>
               </div>
               <div class="row">
-                <div class="col-xs-8 col-xs-offset-4 col-md-9 col-md-offset-3 text-muted" style="padding-top:10px"><em>Mechanims for protecting tubes from cathode poisoning. </em></div>  
+                <div class="col-xs-8 col-xs-offset-4 col-md-9 col-md-offset-3 text-muted" style="padding-top:10px"><em>Mechanism for protecting tubes from cathode poisoning. </em></div>  
               </div>
             </div>
           </div>
@@ -248,7 +249,7 @@
 										</div>
 										<div class="col-xs-6 col-md-6 text-left">
 											<div class="input-group">
-												<div class="input-group-addon hidden-xs">stop</div>
+												<div class="input-group-addon hidden-xs">end</div>
 												<select id="hw_nightmode_stop" class="selectpicker form-control">
 													<option value="">---</option>
 													<option value="6">06:00</option>
@@ -266,6 +267,21 @@
                 <div class="col-xs-8 col-xs-offset-4 col-md-9 col-md-offset-3 text-muted" style="padding-top:10px"><em>Allows for dimming the clock between selected interval, in order to not distrub.</em></div>  
               </div> 
 						</div>
+						<div class="list-group-item">
+							<div class="row">
+								<div class="col-xs-4 col-md-3 text-right" style="padding-top:0px;"> <strong>Suppress ACP:</strong></div>
+								<div class="col-xs-8 col-md-9 text-left">
+                  <select class="form-control" id="hw_suppress_acp">
+										<option value="">---</option>
+										<option value="1">Yes</option>
+										<option value="0">No</option>
+									</select>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-8 col-xs-offset-4 col-md-9 col-md-offset-3 text-muted" style="padding-top:10px"><em>Disable ACP when night mode is on, you know not to disturb.</em></div>  
+              </div>
+            </div>
           </div>
 					<label for="hardware_fwupgrade">Firmware Upgrade</label>
 					<div class="list-group" id="hardware_fwupgrade">
@@ -285,8 +301,11 @@
 							</div>
 						</div>	
 					</div>
+          <div class="form-group text-center">
+						<button type="button" class="btn btn-primary" id="btn_save"> <span class="glyphicon glyphicon-ok"></span> Save </button>
+          </div>
 				</div>
-		</div><!-- content:container:row -->
+      </div><!-- content:container:row -->
 		</div><!-- main:container:row -->
 	</div> <!-- main:container-->
 	<!-- build:js script.js -->
@@ -304,7 +323,7 @@
 				showSpinner: false
 			});
 			
-			//pretty slider
+			//pretty slider for brightness
 			noUiSlider.create($("#brightness_slider")[0], {
 				start: 0,
 				step: 1,
@@ -327,7 +346,7 @@
 			$("#brightness_slider")[0].noUiSlider.on("change", function(values, handle) {
 				console.log("Brightness value: " + values[handle]);
 				$("#brightness_slider_val").html("Value: " + values[handle]	);
-				$.post("/hw", {brightness: values[handle] }, function(data) {
+				$.post("/hw", {"hw_brightness": values[handle] }, function(data) {
 					//log the response
 					console.log(data);
 				}, "json");
@@ -385,13 +404,13 @@
 				//network ssid from custom attribute
 				var network_ssid = $(this).attr("network-ssid");
 				//modal title
-				$("#network_setup_title").html(network_ssid);
+				$("#network_setup_title").html("<strong>" + network_ssid + "</strong>");
 				//hidden ssid input
 				$("#network_ssid").val(network_ssid);
 				//reset passd input
 				$("#network_password").val("");
 				//hide post request
-					$("#body_post_request").hide();
+				$("#body_post_request").hide();
 				//show pre request
 				$("#body_pre_request").show();
 				//not sure why this is here
@@ -449,7 +468,7 @@
 			$("#network_setup").on("click", "button#btn_save", function(e) {
 				//pretty progress bar
 				NProgress.start();
-				$(this).html("Please wait...");
+				$("#btn_save").html("Please wait...");
 				
 				//get ssid and network from inputs
 				var network_password = $("#network_password").val();
@@ -462,14 +481,12 @@
 					//present some pretty error messages to the user
 					if(data.error) {
 						$("#body_post_request").html("<div class=\"list-group\"><div class=\"list-group-item list-group-item-warning\"><strong>Fool!</strong> "+data.message+"</div></div>").removeClass("hidden").show();
-						$("#btn_save").hide();
 					} else {
-						$("#body_post_request").html("<div class=\"list-group\"><div class=\"list-group-item list-group-item-success\">Settings saved for network <strong>"+network_ssid+"</strong>, after rebooting connect to the same network to configure the device!</div></div>").removeClass("hidden").show();
-						$("#btn_save").html("Reboot");
-						
-						//rebind button
-						$("#btn_save").hide();
+						$("#body_post_request").html("<div class=\"list-group\"><div class=\"list-group-item list-group-item-success\">Settings saved for network <strong>"+network_ssid+"</strong>, after reboot connect to the same network to configure the device!</div></div>").removeClass("hidden").show();
 					}
+					//hide button
+					$("#btn_save").hide();
+					
 				}, "json").fail( function(xhr, status, error) {
 					//hide password input in modal
 					$("#body_pre_request").hide();
@@ -483,36 +500,68 @@
 			});
 			
 			//bind time settings update
-			$("#container_time").on("click", "button#btn_save", function (e) {
-				//pretty progress bar
+			$("#container_time").on("click", "button#btn_save", function () {
+				
+				//pretty bar
 				NProgress.start();
 				
 				//get values
-				var	time_server_val = $("#time_server").val();
-				var	time_zone_val = $("#time_zone").val();
-				var	time_dst_val = $("#time_dst").val();
-				var time_system_time_val = 0;
+				var	time_server = $("#time_server").val();
+				var	time_zone = $("#time_zone").val();
+				var	time_dst = $("#time_dst").val();
+				var time_system_time = 0;
 				
 				if($("#time_system_update").is(":checked")) {
-						time_system_time_val = Math.floor(Date.now() / 1000);
+						time_system_time = Math.floor(Date.now() / 1000);
 				}
 				
-				$.post("/time", {time_server: time_server_val, time_zone: time_zone_val, time_dst: time_dst_val, time_system_time: time_system_time_val }, function(data) {
+				//post values
+				$.post("/time", {"time_server": time_server, "time_zone": time_zone, "time_dst": time_dst, "time_system_time": time_system_time }, function(data) {
 				
 					//pretty messages
 					if(data.error) {
-						$("#time_error").html("<div class=\"list-group-item list-group-item-danger\"><strong>Oh Snap!</strong> Something went wrong: <strong>"+data.message +"</strong></div>").removeClass("hidden");
+						$("#time_error").html("<div class=\"list-group-item list-group-item-danger\"><strong>Oh Snap!</strong> Something went wrong: <strong>"+data.message +"</strong></div>");
 					} else {
-						$("#time_error").html("<div class=\"list-group-item list-group-item-success\"><strong>Well done!</strong> Settings saved!</div>").removeClass("hidden");
+						$("#time_error").html("<div class=\"list-group-item list-group-item-success\"><strong>Well done!</strong> Settings saved!</div>");
 					}
 				}, "json").fail( function(xhr, status, error) {
-					$("#time_error").html("<div class=\"list-group-item list-group-item-danger\"><strong>Oh Snap!</strong>  Something went wrong: <strong>"+xhr.status+" (" + error + ")</strong></div>").removeClass("hidden");
+					$("#time_error").html("<div class=\"list-group-item list-group-item-danger\"><strong>Oh Snap!</strong>  Something went wrong: <strong>"+xhr.status+" (" + error + ")</strong></div>");
 				}).always( function () {
 						NProgress.done();
 				});
 				//debug info
-				console.log(time_server_val + ", " + time_zone_val + ", " + time_dst_val  );
+				console.log("time: " + time_server + ", " + time_zone + ", " + time_dst);
 			});
+      
+      //bind hw settings
+      $("#container_hw").on("click", "button#btn_save", function () {
+        
+        //pretty bar
+        NProgress.start();
+
+        //get values
+        var hw_brightness = $("#brightness_slider")[0].noUiSlider.get();
+        var hw_acp_time = $("#hw_acp_time").val();
+        var hw_nightmode_start = $("#hw_nightmode_start").val();
+        var hw_nightmode_stop = $("#hw_nightmode_stop").val();
+        var hw_suppress_acp = $("#hw_suppress_acp").val();
+        
+        //post values
+        $.post("/hw", {"hw_brightness": hw_brightness, "hw_acp_time": hw_acp_time, "hw_nightmode_start": hw_nightmode_start, "hw_nightmode_stop": hw_nightmode_stop, "hw_suppress_acp": hw_suppress_acp}, function(data) {
+          if(data.error) {
+          	$("#hw_error").html("<div class=\"list-group-item list-group-item-danger\"><strong>Oh Snap!</strong> Something went wrong: <strong>"+data.message +"</strong></div>");	
+          } else {
+          	$("#hw_error").html("<div class=\"list-group-item list-group-item-success\"><strong>Well done!</strong> Settings saved!</div>");
+          }
+        }, "json").fail( function(xhr, status, error) {
+					$("#hw_error").html("<div class=\"list-group-item list-group-item-danger\"><strong>Oh Snap!</strong>  Something went wrong: <strong>"+xhr.status+" (" + error + ")</strong></div>");
+				}).always( function () {
+						NProgress.done();
+				});
+        
+        //debug info
+        console.log("hw: " + hw_brightness + ", " + hw_acp_time + ", " + hw_nightmode_start + ", " + hw_nightmode_stop + ", " + hw_suppress_acp);
+      }); 
 	});
 	//dynamic load
 	function load_page(page) {
@@ -562,7 +611,7 @@
 						});
 						$("#network_available").html(html_elements.join(""));
 					} else {
-						$("#network_available").html('<div class="list-group-item list-group-item-warning">Scan not finished or no network available</div>');
+						$("#network_available").html('<div class="list-group-item list-group-item-warning">Scan not finished or no networks available</div>');
 					}
 				}).fail(function(xhr, status, error) {
 					$("#container_wifi").html('<h3 class="page-header">WiFi Configuration</h3><div class="list-group"><div class="list-group-item list-group-item-danger"><strong>Oh Snap!</strong> Something went wrong: <strong>' +xhr.status+' (' + error + ')</strong></div></div>');
@@ -572,13 +621,8 @@
 				break;
 			case "time":
         //mini clock
-        function mini_clock() {
-          var d = new Date();
-					var d_string = ("0" + d.getDate()).slice(-2) + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + d.getFullYear() + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":" + ("0" + d.getSeconds()).slice(-2);
-					$("#time_system_time").val(d_string);
-        }
-          mini_clock();
-				setInterval(function () {
+        mini_clock();
+        setInterval(function () {
 					mini_clock();
 				}, 1000);
       
@@ -593,6 +637,9 @@
 				}).always(function() {
 					NProgress.done();
 				});
+        
+        //clear time error
+        $("#time_error").html("");
 				break;
 			case "hw":
 				$.getJSON("/hw", function (data) {
@@ -603,16 +650,17 @@
           //acp
           $("#hw_acp_time option[value='" + data.hw_acp_time + "']").prop("selected", true);
           
-          //nightmode start/stop
+          //nightmode start/stop, acp suppress
           $("#hw_nightmode_start option[value='" + data.hw_nightmode_start + "']").prop("selected", true);
           $("#hw_nightmode_stop option[value='" + data.hw_nightmode_stop + "']").prop("selected", true);
+          $("#hw_suppress_acp option[value='" + data.hw_suppress_acp + "']").prop("selected", true);
           
 				}).fail(function(xhr, status, error) {
 					$("#container_hw").html('<h3 class="page-header">Hardware Configuration</h3><div class="list-group"><div class="list-group-item list-group-item-danger"><strong>Oh Snap!</strong> Something went wrong: <strong>'+xhr.status+' (' + error + ')</strong></strong></div></div>');
 				}).always(function() {
 					NProgress.done();
 				});
-        
+				
         //input-group:first-child is hidden, re-add round corners, fix for small screens
         $("select[id*='hw_nightmode']").each(function() {
           var fix_small_screen = {
@@ -622,12 +670,15 @@
           if($(this).siblings().is(":hidden"))
             $(this).css(fix_small_screen); 
         });
+        
+        //clear time error
+        $("#hw_error").html("");
 
 			break;
 			default:
 				NProgress.done();
-		}
-	}
+    }
+  }
 	//stackoverflow http://stackoverflow.com/a/8175221
 	function sortByKey(e, s) {
 		return e.sort(function(e, t) {
@@ -635,6 +686,12 @@
 				o = t[s];
 			return i > o ? -1 : i < o ? 1 : 0
 		})
+	}
+	//mini clock
+	function mini_clock() {
+  	var d = new Date();
+		var d_string = ("0" + d.getDate()).slice(-2) + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + d.getFullYear() + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":" + ("0" + d.getSeconds()).slice(-2);
+		$("#time_system_time").val(d_string);
 	}
 	</script>
 </body>

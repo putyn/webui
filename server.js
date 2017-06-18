@@ -129,7 +129,7 @@ app.post("/time", function(req,res) {
 });
 
 app.get("/hw", function(req,res) {
-	var json_response = {"hw_brightness": 8, "hw_acp_time":30, "hw_nightmode_start": 20, "hw_nightmode_stop":6};
+	var json_response = {"hw_brightness": 8, "hw_acp_time":6, "hw_nightmode_start": 20, "hw_nightmode_stop":6, "hw_suppress_acp": 1};
 	
 	//insert some random wait
 	setTimeout( function () {
@@ -141,10 +141,23 @@ app.get("/hw", function(req,res) {
 });
 
 app.post("/hw", function (req, res) {
-	var brightness = req.body.brightness;
-	var json_resp = {"brightness": brightness};
-	res.status(status_code);
-	res.json(json_resp);
+	
+  var hw_brightness = req.body.hw_brightness;
+  var hw_acp_time = req.body.hw_acp_time;
+  var hw_nightmode_start = req.body.hw_nightmode_start;
+  var hw_nightmode_stop = req.body.hw_nightmode_stop;
+  var hw_suppress_acp = req.body.hw_suppress_acp;
+  
+	var json_response = {"error": false, "message": "", "hw_brightness": hw_brightness, "hw_acp_time" : hw_acp_time, "hw_nightmode_start": hw_nightmode_start, "hw_nightmode_stop": hw_nightmode_stop, "hw_suppress_acp" : hw_suppress_acp};
+	
+	//insert some random wait
+	setTimeout( function () {
+		//simulate .fail on front end side via http code
+		res.status(status_code);
+		res.json(json_response);
+	}, random_wait * Math.random());
+	
+	console.log("[POST] /hw brightness: "+hw_brightness+", hw_acp_time: "+hw_acp_time+", hw_nightmode_start: "+hw_nightmode_start+", hw_nightmode_stop:" + hw_nightmode_stop + ", hw_suppress_acp: " + hw_suppress_acp);
 });
 
 app.listen(8080);

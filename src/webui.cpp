@@ -107,6 +107,10 @@ void fs_setup() {
 			Serial.printf("[FS] time zone: %d\n", settings.time_zone);
 			Serial.printf("[FS] time DST: %d\n", settings.time_dst);
 			Serial.printf("[FS] display brightness: %d\n", settings.brightness);
+			Serial.printf("[FS] acp every: %d minutes\n", (settings.acp_time == 0 ? 12 : settings.acp_time) * 5);
+			Serial.printf("[FS] nightmode start: %02d:00\n", settings.nightmode_start.hours);
+			Serial.printf("[FS] nightmode stop: %02d:00\n", settings.nightmode_stop.hours);
+			Serial.printf("[FS] nightmode suppress acp: %s\n", settings.suppress_acp ? "yes": "no");
 		}
 		
 		//settings that are not saved & should be reset
@@ -115,7 +119,9 @@ void fs_setup() {
 		settings.online = false;
 		settings.update_time = false;
 		settings.update_display = false;
+		settings.should_acp = false;
 		settings.next_ntp_update = 0;
+		settings.next_acp = 0;
 		settings.uptime = 0;
   
 		
@@ -164,12 +170,12 @@ void handle_wifi_save(AsyncWebServerRequest *request) {
     strncpy(wifi.pass, request->getParam("pass", true)->value().c_str(), sizeof (wifi.pass));
 
     if (save_file((char *)"/wifi.dat", (byte *)&wifi, sizeof(struct wifi_settings_t))) {
-      json_resp = F("{\"error\":false, \"message\": \"Settings saved, reboot to load new network config\"}");
+      json_resp = F("{\"error\":0, \"message\": \"Settings saved, reboot to load new network config\"}");
     } else {
-      json_resp = F("{\"error\":true, \"message\": \"Settings could not be saved\"}");
+      json_resp = F("{\"error\":1, \"message\": \"Settings could not be saved\"}");
     }
   } else {
-    json_resp = F("{\"error\":true, \"message\": \"Bad request\"}");
+    json_resp = F("{\"error\":1, \"message\": \"Bad request\"}");
   }
   request->send(200, "text/json", json_resp);
 }
@@ -180,7 +186,7 @@ void handle_wifi_save(AsyncWebServerRequest *request) {
  */
 void handle_wifi(AsyncWebServerRequest *request) {
 
-  uint8_t found_networks = 0;
+  int8_t found_networks = 0;
   uint8_t idx = 0;
   String json_resp;
 
@@ -222,19 +228,6 @@ void handle_time(AsyncWebServerRequest *request) {
   request->send(200, "text/json", json_resp);
 }
 /**
- * callback for /hw GET
- * returns hw settings, more to be added
- * json format
- */
-void handle_hw(AsyncWebServerRequest *request) {
-  
-  String json_resp = "";
-
-  json_resp = "{\"brightness\":"+ String(settings.brightness) + "}";
-
-  request->send(200, "text/json", json_resp);
-}
-/**
  * callback for /time POST
  * saves time settings from client
  * returns messages based on data submited
@@ -254,40 +247,74 @@ void handle_time_save(AsyncWebServerRequest *request) {
     sync_time  = request->getParam("time_system_time", true)->value().toInt();
     
     if(sync_time > 0) {
-		//add time_zone + time_dst to received time
-    	sync_time = sync_time + settings.time_zone + settings.time_dst; 
-    	local_time.millis = 0;
-    	local_time.hours = (sync_time  % 86400L) / 3600;
-		local_time.minutes = (sync_time  % 3600) / 60;
-		local_time.seconds = sync_time % 60;	
+      //add time_zone + time_dst to received time
+      sync_time = sync_time + settings.time_zone + settings.time_dst; 
+      local_time.millis = 0;
+      local_time.hours = (sync_time  % 86400L) / 3600;
+      local_time.minutes = (sync_time  % 3600) / 60;
+      local_time.seconds = sync_time % 60;	
     } else {
-		settings.update_time = true;
-	}
+      settings.update_time = true;
+    }
 
     if (save_file((char *)"/settings.dat", (byte *)&settings, sizeof(struct settings_t))) {
-      json_resp = F("{\"error\":false, \"message\": \"\"}");
+      json_resp = F("{\"error\":0, \"message\": \"\"}");
     } else {
-      json_resp = F("{\"error\":true, \"message\": \"Settings could not be saved\"}");
+      json_resp = F("{\"error\":1, \"message\": \"Settings could not be saved\"}");
     }
   } else {
-    json_resp = F("{\"error\":true, \"message\": \"Bad request\"}");
+    json_resp = F("{\"error\":1, \"message\": \"Bad request\"}");
   }
   request->send(200, "text/json", json_resp);
 }
 
+/**
+ * callback for /hw GET
+ * returns hw settings, more to be added
+ * json format
+ */
+void handle_hw(AsyncWebServerRequest *request) {
+  
+  String json_resp = "";
+
+  json_resp = "{\"hw_brightness\": "+ String(settings.brightness) +", \"hw_acp_time\": "+ String(settings.acp_time == 0 ? 12 : settings.acp_time) +", \"hw_nightmode_start\": "+ String(settings.nightmode_start.hours) +", \"hw_nightmode_stop\":"+ String(settings.nightmode_stop.hours) +", \"hw_suppress_acp\": "+ String(settings.suppress_acp) +"}";
+
+  request->send(200, "text/json", json_resp);
+}
+/**
+ * callback for /hw POST
+ * saves hardware settings from client
+ * json format
+ */
 void handle_hw_save(AsyncWebServerRequest *request) {
-	uint8_t brightness;
 	String json_resp;
 	
-	if(request->hasParam("brightness", true)) {
-		settings.brightness = request->getParam("brightness", true)->value().toInt();
+	//brightness
+	if(request->hasParam("hw_brightness", true) && request->getParam("hw_brightness", true)->value().toInt() != settings.brightness) {
+		settings.brightness = request->getParam("hw_brightness", true)->value().toInt();
 		hw_set_brightness(settings.brightness);
-		
-		if (save_file((char *)"/settings.dat", (byte *)&settings, sizeof(struct settings_t))) {
-			json_resp = F("{\"error\":false, \"message\": \"\"}");
-		} else {
-			json_resp = F("{\"error\":true, \"message\": \"Settings could not be saved\"}");
-		}
+	}
+	//acp time
+	if(request->hasParam("hw_acp_time", true) && request->getParam("hw_acp_time", true)->value().toInt() != settings.acp_time) {
+		settings.acp_time = request->getParam("hw_acp_time", true)->value().toInt();
+	}
+	//night mode start
+	if(request->hasParam("hw_nightmode_start", true) && request->getParam("hw_nightmode_start", true)->value().toInt() != settings.nightmode_start.hours) {
+		settings.nightmode_start.hours = request->getParam("hw_nightmode_start", true)->value().toInt();
+	}
+	//night mode stop
+	if(request->hasParam("hw_nightmode_stop", true) && request->getParam("hw_nightmode_stop", true)->value().toInt() != settings.nightmode_stop.hours) {
+		settings.nightmode_stop.hours = request->getParam("hw_nightmode_stop", true)->value().toInt();
+	}
+	//night mode suppress acp
+	if(request->hasParam("hw_suppress_acp", true) && request->getParam("hw_suppress_acp", true)->value().toInt() != settings.suppress_acp) {
+		settings.suppress_acp = request->getParam("hw_suppress_acp", true)->value().toInt();
+	}
+	
+	if (save_file((char *)"/settings.dat", (byte *)&settings, sizeof(struct settings_t))) {
+		json_resp = F("{\"error\":0, \"message\": \"\"}");
+	} else {
+		json_resp = F("{\"error\":1, \"message\": \"Settings could not be saved\"}");
 	}
 	request->send(200, "text/json", json_resp);
 }
@@ -375,6 +402,12 @@ String mkuptime(uint32_t uptime)   {
 	//return String(days) + " day(s) "+ String(hours) + ":"+ String(minutes) +":"+ String(seconds);
 	return String(buffer);
 }
+/*
+int8_t is_night() {
+	return local_time >= settings.nightmode_start && local_time <= settings.nightmode_stop ? 1 : 0;
+}
+*/
+
 /**
  * get time via NTP
  * returns time in the custom structure
