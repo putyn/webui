@@ -20,20 +20,37 @@ struct ctime_t {
 	uint8_t seconds;
 };
 
+/*
+ * settings that should be saved
+ */
 struct settings_t {
-  char time_server[32];
-  char hostname[32];
+	//time server, to add length check in ui
+  char time_server[32];	
+  //saved brightness leve, between 0(lowest) -- 10(highest) 
   uint8_t brightness;
+  //how often should ACP run min is 5 mins	
   uint8_t acp_time;
-  uint8_t suppress_acp;
+  //suppress ACP during night mode 	
+  uint8_t suppress_acp;	
+  //timezone + dst
   int16_t time_zone;
   int16_t time_dst;
-  uint32_t next_ntp_update;
-  uint32_t next_acp;
-  uint32_t uptime;
+  //begining & ending for night mode (during night mode lowest brightness is used, ACP is controlled via ui);
   ctime_t nightmode_start;
   ctime_t nightmode_stop;
+};
+
+/*
+ * device settings
+ */
+struct device_t {
+	char hostname[32];
+	uint32_t next_ntp_update;
+  uint32_t acp_start_time;
+  uint32_t uptime;
   boolean should_acp;
+  boolean night_mode;
+  boolean acp_is_running;
   boolean update_display;
   boolean update_time;
   boolean reboot;
@@ -53,7 +70,7 @@ void web_setup();
 void fs_setup();
 void webui_dns_requests();
 int8_t ntp_get_time(ctime_t *temp_time);
-int8_t is_night();
+uint8_t is_night();
 
 /*
  * extern functions

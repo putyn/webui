@@ -9,12 +9,13 @@ DNSServer dns_server;
 
 wifi_settings_t wifi;
 settings_t settings;
+device_t device;
 extern ctime_t local_time;
 
 void wifi_setup() {
 	
   //nice hostname
-  WiFi.hostname(settings.hostname);
+  WiFi.hostname(device.hostname);
   WiFi.mode(WIFI_STA);
   
   //check to see if we have config file
@@ -39,15 +40,15 @@ void wifi_setup() {
     Serial.println(F("[WiFi] configuring access point..."));
     WiFi.mode(WIFI_AP_STA);
     WiFi.disconnect();
-    if (WiFi.softAP(settings.hostname)) {
+    if (WiFi.softAP(device.hostname)) {
       
-      Serial.printf("[WiFi] successfully created access point: %s\n", settings.hostname);
+      Serial.printf("[WiFi] successfully created access point: %s\n", device.hostname);
       Serial.printf("[WiFi] IP addess: %s\n", WiFi.softAPIP().toString().c_str());
       
       //start DNS server for easier configuration
       Serial.println(F("[WiFi] starting DNS server"));
       dns_server.start(53, "*", WiFi.softAPIP());
-      settings.soft_ap = true;
+      device.soft_ap = true;
       
     } else {
       Serial.println(F("[WiFi] something failed, halting"));
@@ -62,7 +63,7 @@ void wifi_setup() {
 void web_setup() {
 	
 	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest * request ) {
-		settings.reboot = true;
+		device.reboot = true;
 		request->redirect("/");
 	});
 	
@@ -114,15 +115,15 @@ void fs_setup() {
 		}
 		
 		//settings that are not saved & should be reset
-		settings.reboot = false;
-		settings.soft_ap = false;
-		settings.online = false;
-		settings.update_time = false;
-		settings.update_display = false;
-		settings.should_acp = false;
-		settings.next_ntp_update = 0;
-		settings.next_acp = 0;
-		settings.uptime = 0;
+		//settings.reboot = false;
+		//settings.soft_ap = false;
+		//settings.online = false;
+		//settings.update_time = false;
+		//settings.update_display = false;
+		//settings.should_acp = false;
+		//settings.next_ntp_update = 0;
+		//settings.next_acp = 0;
+		//settings.uptime = 0;
   
 		
 	} else {
@@ -145,8 +146,8 @@ void handle_overview(AsyncWebServerRequest *request) {
   json_resp = "{\"ChipID\": \"" + String(chipid) + "\",";
   json_resp += "\"CPU frequency\": \"" + String(ESP.getCpuFreqMHz()) + " MHz\",";
   json_resp += "\"Last reset reason\": \"" + ESP.getResetReason() + "\",";
-  json_resp += "\"Internet\": \"" + String(settings.online ? "online" : "offline") + "\",";
-  json_resp += "\"Uptime\": \"" + mkuptime(settings.uptime) + "\",";
+  json_resp += "\"Internet\": \"" + String(device.online ? "online" : "offline") + "\",";
+  json_resp += "\"Uptime\": \"" + mkuptime(device.uptime) + "\",";
   json_resp += "\"Free heap\": \"" + formatBytes(ESP.getFreeHeap()) + "\",";
   json_resp += "\"Storage size\": \"" + formatBytes(ESP.getFlashChipSize()) + "\",";
   json_resp += "\"Firmware size\": \"" + formatBytes(ESP.getSketchSize()) + "\",";
@@ -254,7 +255,7 @@ void handle_time_save(AsyncWebServerRequest *request) {
       local_time.minutes = (sync_time  % 3600) / 60;
       local_time.seconds = sync_time % 60;	
     } else {
-      settings.update_time = true;
+      device.update_time = true;
     }
 
     if (save_file((char *)"/settings.dat", (byte *)&settings, sizeof(struct settings_t))) {
@@ -402,11 +403,26 @@ String mkuptime(uint32_t uptime)   {
 	//return String(days) + " day(s) "+ String(hours) + ":"+ String(minutes) +":"+ String(seconds);
 	return String(buffer);
 }
-/*
-int8_t is_night() {
-	return local_time >= settings.nightmode_start && local_time <= settings.nightmode_stop ? 1 : 0;
+
+boolean is_night() {
+
+  uint8_t max_loops = (24 - settings.nightmode_start.hours) + settings.nightmode_stop.hours;
+  uint8_t loop_idx = 0;
+  uint8_t hour = settings.nightmode_start.hours;
+  
+  for(loop_idx = 0; loop_idx < max_loops; loop_idx++) {
+    if(hour == local_time.hours) {
+      return true;
+      break;
+    }
+    if(hour == settings.nightmode_stop.hours)
+      break;
+    if(++hour == 24)
+      hour = 0; 
+  }
+  
+  return false;
 }
-*/
 
 /**
  * get time via NTP
@@ -471,7 +487,7 @@ int8_t ntp_get_time(ctime_t *temp_time) {
 
 	if(!ntp_got_packet) {
 		Serial.println(F("[NTP] didn't get a message from the server, closing connection"));
-		settings.next_ntp_update = settings.uptime + 60; //force update in 1 min
+		device.next_ntp_update = device.uptime + 60; //force update in 1 min
 		ntp.stop();
 		return -2;
 	}
@@ -486,14 +502,8 @@ int8_t ntp_get_time(ctime_t *temp_time) {
 	//Unix time, seconds since Jan, 1st 1970 + time zone +/- dst
 	temp_seconds = temp_seconds - NTP_TIMESTAMP_DELTA + settings.time_zone + settings.time_dst;
   
-	/*
-	//diff
-	if(temp_time->unix_time > 0)
-		Serial.printf("[NTP] diff between local time and ntp %d\n", temp_seconds - temp_time->unix_time);
-	*/
-	
 	//set next ntp update
-	settings.next_ntp_update = settings.uptime + NTP_UPDATE;
+	device.next_ntp_update = device.uptime + NTP_UPDATE;
 	ntp.stop();
 	
 	//retrun variable in custom structure
