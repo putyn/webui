@@ -49,7 +49,7 @@ struct device_t {
   uint32_t acp_start_time;
   uint32_t uptime;
   boolean should_acp;
-  boolean night_mode;
+  boolean nightmode;
   boolean acp_is_running;
   boolean update_display;
   boolean update_time;

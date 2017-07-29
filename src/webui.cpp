@@ -113,19 +113,7 @@ void fs_setup() {
 			Serial.printf("[FS] nightmode stop: %02d:00\n", settings.nightmode_stop.hours);
 			Serial.printf("[FS] nightmode suppress acp: %s\n", settings.suppress_acp ? "yes": "no");
 		}
-		
-		//settings that are not saved & should be reset
-		//settings.reboot = false;
-		//settings.soft_ap = false;
-		//settings.online = false;
-		//settings.update_time = false;
-		//settings.update_display = false;
-		//settings.should_acp = false;
-		//settings.next_ntp_update = 0;
-		//settings.next_acp = 0;
-		//settings.uptime = 0;
-  
-		
+    
 	} else {
 		Serial.println(F("[FS] file system couldn't be opened, halting"));
 		while(1);
@@ -278,7 +266,7 @@ void handle_hw(AsyncWebServerRequest *request) {
   
   String json_resp = "";
 
-  json_resp = "{\"hw_brightness\": "+ String(settings.brightness) +", \"hw_acp_time\": "+ String(settings.acp_time == 0 ? 12 : settings.acp_time) +", \"hw_nightmode_start\": "+ String(settings.nightmode_start.hours) +", \"hw_nightmode_stop\":"+ String(settings.nightmode_stop.hours) +", \"hw_suppress_acp\": "+ String(settings.suppress_acp) +"}";
+  json_resp = "{\"hw_brightness\": "+ String(settings.brightness) +", \"hw_acp_time\": "+ String(settings.acp_time == 0 ? 12 : settings.acp_time) +", \"hw_nightmode_start\": "+ String(settings.nightmode_start.hours) +", \"hw_nightmode_stop\":"+ String(settings.nightmode_stop.hours) +", \"hw_suppress_acp\": "+ String(settings.suppress_acp) +", \"is_nightmode\":"+ device.nightmode +"}";
 
   request->send(200, "text/json", json_resp);
 }
@@ -290,10 +278,12 @@ void handle_hw(AsyncWebServerRequest *request) {
 void handle_hw_save(AsyncWebServerRequest *request) {
 	String json_resp;
 	
-	//brightness
-	if(request->hasParam("hw_brightness", true) && request->getParam("hw_brightness", true)->value().toInt() != settings.brightness) {
-		settings.brightness = request->getParam("hw_brightness", true)->value().toInt();
-		hw_set_brightness(settings.brightness);
+	//brightness, night mode aware
+	if(request->hasParam("hw_brightness", true)) {
+    settings.brightness = request->getParam("hw_brightness", true)->value().toInt();
+    if(!device.nightmode) {
+      hw_set_brightness(settings.brightness);  
+    }
 	}
 	//acp time
 	if(request->hasParam("hw_acp_time", true) && request->getParam("hw_acp_time", true)->value().toInt() != settings.acp_time) {
@@ -317,6 +307,7 @@ void handle_hw_save(AsyncWebServerRequest *request) {
 	} else {
 		json_resp = F("{\"error\":1, \"message\": \"Settings could not be saved\"}");
 	}
+  
 	request->send(200, "text/json", json_resp);
 }
 
@@ -400,10 +391,13 @@ String mkuptime(uint32_t uptime)   {
 	seconds = uptime % 60;
 	
 	sprintf(buffer,"%d day(s) %02d:%02d:%02d", days, hours, minutes, seconds);
-	//return String(days) + " day(s) "+ String(hours) + ":"+ String(minutes) +":"+ String(seconds);
 	return String(buffer);
 }
 
+/**
+ * since clock is not aware of day, hack something
+ * start at nightmode_start, go to 24, contiune from 0 to nightmode_stop, check where you are.
+ */
 boolean is_night() {
 
   uint8_t max_loops = (24 - settings.nightmode_start.hours) + settings.nightmode_stop.hours;

@@ -28,7 +28,7 @@
 					<li><a href="#overview"> <span class="glyphicon glyphicon-dashboard"></span> Overview </a></li>
 					<li><a href="#wifi"> <span class="glyphicon glyphicon-signal"></span> WiFi Configuration </a></li>
 					<li><a href="#time"> <span class="glyphicon glyphicon-time"></span> Time Configuration </a></li>
-					<li><a href="#hw"> <span class="glyphicon glyphicon-cog"></span> Hardware Configuration </a></li>
+					<li><a href="#hw"> <span class="glyphicon glyphicon-cog"></span> Clock Configuration </a></li>
 					<li><a href="/reboot"> <span class="glyphicon glyphicon-off"></span> Reboot </a></li>
 				</ul>
 			</div>
@@ -41,7 +41,7 @@
 					<li><a href="#overview"> <span class="glyphicon glyphicon-dashboard"></span> Overview </a></li>
 					<li><a href="#wifi"> <span class="glyphicon glyphicon-signal"></span> WiFi Configuration </a></li>
 					<li><a href="#time"> <span class="glyphicon glyphicon-time"></span> Time Configuration </a></li>
-					<li><a href="#hw"> <span class="glyphicon glyphicon-cog"></span> Hardware Configuration </a></li>
+					<li><a href="#hw"> <span class="glyphicon glyphicon-cog"></span> Clock Configuration </a></li>
 					<li><a href="/reboot"> <span class="glyphicon glyphicon-off"></span> Reboot </a></li>
 				</ul>
 			</div>
@@ -178,9 +178,9 @@
 					</div>
 				</div>
 				<div id="container_hw" class="hidden">
-					<h3 class="page-header">Hardware Configuration</h3>
+					<h3 class="page-header">Clock Configuration</h3>
 					<div class="list-group" id="hw_error"></div>
-					<label for="hardware_brightness">Display Brightness</label>
+					<label for="hardware_brightness">Clock Brightness</label>
 					<div class="list-group" id="hardware_brightness">
 						<div class="list-group-item">
 							<div class="row">
@@ -342,17 +342,17 @@
 				}
 			});
 			
-			//send update only on set event
+			//send update to BE only on change event
 			$("#brightness_slider")[0].noUiSlider.on("change", function(values, handle) {
 				console.log("Brightness value: " + values[handle]);
-				$("#brightness_slider_val").html("Value: " + values[handle]	);
+				$("#brightness_slider_val").html("<em>Current level: <strong>" + values[handle] + "</strong></em>");
 				$.post("/hw", {"hw_brightness": values[handle] }, function(data) {
 					//log the response
 					console.log(data);
 				}, "json");
 			});
 			$("#brightness_slider")[0].noUiSlider.on("slide", function(values, handle) {
-				$("#brightness_slider_val").html("Value: " + values[handle]	);
+        $("#brightness_slider_val").html("<em>Current level: <strong>" + values[handle] + "</strong></em>");
 			});
 			
 			//bind menu clicks
@@ -645,7 +645,13 @@
 				$.getJSON("/hw", function (data) {
           //slider
 					$("#brightness_slider")[0].noUiSlider.set(data.hw_brightness);
-					$("#brightness_slider_val").html("Value: " + data.hw_brightness);
+          if(data.is_nightmode) {
+            $("#brightness_slider")[0].setAttribute('disabled', true);
+            $("#brightness_slider_val").html("<em>Night mode is active, brightness is set to minimum and adjustments are disabled</em>");
+          } else {
+            $("#brightness_slider")[0].removeAttribute('disabled');
+            $("#brightness_slider_val").html("<em>Current level: <strong>" + data.hw_brightness + "</strong></em>");
+          }
           
           //acp
           $("#hw_acp_time option[value='" + data.hw_acp_time + "']").prop("selected", true);
@@ -656,7 +662,7 @@
           $("#hw_suppress_acp option[value='" + data.hw_suppress_acp + "']").prop("selected", true);
           
 				}).fail(function(xhr, status, error) {
-					$("#container_hw").html('<h3 class="page-header">Hardware Configuration</h3><div class="list-group"><div class="list-group-item list-group-item-danger"><strong>Oh Snap!</strong> Something went wrong: <strong>'+xhr.status+' (' + error + ')</strong></strong></div></div>');
+					$("#container_hw").html('<h3 class="page-header">Clock Configuration</h3><div class="list-group"><div class="list-group-item list-group-item-danger"><strong>Oh Snap!</strong> Something went wrong: <strong>'+xhr.status+' (' + error + ')</strong></strong></div></div>');
 				}).always(function() {
 					NProgress.done();
 				});

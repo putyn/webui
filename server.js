@@ -129,7 +129,7 @@ app.post("/time", function(req,res) {
 });
 
 app.get("/hw", function(req,res) {
-	var json_response = {"hw_brightness": 8, "hw_acp_time":6, "hw_nightmode_start": 20, "hw_nightmode_stop":6, "hw_suppress_acp": 1};
+	var json_response = {"hw_brightness": 8, "hw_acp_time":6, "hw_nightmode_start": 20, "hw_nightmode_stop":6, "hw_suppress_acp": 1,"is_nightmode": 1};
 	
 	//insert some random wait
 	setTimeout( function () {
