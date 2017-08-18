@@ -99,14 +99,17 @@ div#container_time, div#container_hw  > div.list-group > div.list-group-item > d
 .input-group > .glyphicon {
 	top: 0px;
 }
-/*
- *
- */
+
 div#network_available > a.list-group-item {
 	cursor: pointer;
 }
+
+.navbar-brand {
+	font-weight:bold;
+}	
+
 /*
- * nouislider
+ * nouislider, match colors
  */
 .noUi-connect {
 	border-radius: 4px;
@@ -114,8 +117,15 @@ div#network_available > a.list-group-item {
 }
 
 /*
- * 
+ *nprogress, match colors
  */
-.navbar-brand {
-	font-weight:bold;
-}	
+#nprogress .bar {
+  background: #AEA79F;
+}
+#nprogress .peg {
+  box-shadow: 0 0 10px #AEA79F, 0 0 5px #AEA79F;
+}
+#nprogress .spinner-icon {
+  border-top-color: #AEA79F;
+  border-left-color: #AEA79F;
+}

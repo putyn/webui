@@ -7,7 +7,7 @@ app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
 
-app.use(express.static(__dirname + '/html'));
+app.use(express.static(__dirname + '/dist'));
 var status_code = argv['c'] ? argv['c'] : 200;
 var random_wait = argv['w'] ? argv['w'] : 100;
 
@@ -129,7 +129,7 @@ app.post("/time", function(req,res) {
 });
 
 app.get("/hw", function(req,res) {
-	var json_response = {"hw_brightness": 8, "hw_acp_time":6, "hw_nightmode_start": 20, "hw_nightmode_stop":6, "hw_suppress_acp": 1,"is_nightmode": 1};
+	var json_response = {"hw_brightness": 8, "hw_acp_time":6, "hw_nightmode_start": 20, "hw_nightmode_stop":6, "hw_suppress_acp": 1,"is_nightmode": 0};
 	
 	//insert some random wait
 	setTimeout( function () {

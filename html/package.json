@@ -1,0 +1,32 @@
+{
+  "name": "esp8266-webui",
+  "version": "1.0.0",
+  "description": "html5 bootstrap webui for clocks - build scripts for web developemnt + bulid for ESP8266",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/putyn/webui.git"
+  },
+  "author": "Vlad Conut",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/putyn/webui/issues"
+  },
+  "homepage": "https://github.com/putyn/webui#readme",
+  "devDependencies": {
+    "body-parser": "^1.17.2",
+    "express": "^4.15.4",
+    "gulp": "^3.9.1",
+    "gulp-clean-css": "^3.7.0",
+    "gulp-gzip": "^1.4.0",
+    "gulp-htmlmin": "^3.0.0",
+    "gulp-inline": "^0.1.3",
+    "gulp-preprocess": "^2.0.0",
+    "gulp-uglify": "^3.0.0",
+    "run-sequence": "^2.1.0"
+  }
+}

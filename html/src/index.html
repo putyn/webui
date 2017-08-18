@@ -5,24 +5,36 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-	<meta name="description" content="html5 bootstrap webui with ESP8266">
+	<meta name="description" content="html5 bootstrap webui for ESP8266 clocks">
 	<meta name="author" content="Vlad Conut">
-	<meta name="theme-color" content="#F29879">
-	<link rel="icon" href="img/favicon.ico">
-	<title>NAKED Nixie</title>
-	<!-- build:css style.css -->
-	<link href="css/bootstrap.css" rel="stylesheet">
-	<link href="css/ubuntu.css" rel="stylesheet">
+  <!-- @if VARIANT='nixie' -->
+  <meta name="theme-color" content="#F29879">
+  <link rel="icon" href="img/favicon_nixie.ico">
+  <title>NAKED Nixie</title>
+  <!-- @endif -->
+  <!-- @if VARIANT='seven' -->
+  <meta name="theme-color" content="#333">
+  <link rel="icon" href="img/favicon_seven.ico">
+  <title>Big Seven</title>
+  <!-- @endif -->  
 	<link href="css/nouislider.css" rel="stylesheet">
 	<link href="css/nprogress.css" rel="stylesheet">
-	<link href="css/dashboard.css" rel="stylesheet">
-	<!-- build:css style.css -->
+  <!-- @if VARIANT='nixie' -->
+    <link href="css/bootstrap_nixie.css" rel="stylesheet">
+    <link href="css/ubuntu.css" rel="stylesheet">
+    <link href="css/nixie.css" rel="stylesheet">
+  <!-- @endif -->
+  <!-- @if VARIANT='seven' -->
+	<link href="css/bootstrap_seven.css" rel="stylesheet">
+	<link href="css/roboto.css" rel="stylesheet">
+	<link href="css/seven.css" rel="stylesheet">
+  <!-- @endif -->
 </head>
 <body>
-	<nav class="navbar navbar-default navbar-fixed-top">
+	<nav class="navbar navbar-<!-- @echo VARIANT_navbar --> navbar-fixed-top">
 		<div class="container-fluid">
 			<div class="navbar-header">
-				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar"> <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span> </button> <a class="navbar-brand" href="/">NAKED Nixie</a></div>
+				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar"> <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span> </button> <a class="navbar-brand" href="/"><!-- @echo VARIANT_NAME--></a></div>
 			<div id="navbar" class="navbar-collapse collapse">
 				<ul class="nav navbar-nav navbar-right visible-xs-block">
 					<li><a href="#overview"> <span class="glyphicon glyphicon-dashboard"></span> Overview </a></li>
@@ -308,12 +320,10 @@
       </div><!-- content:container:row -->
 		</div><!-- main:container:row -->
 	</div> <!-- main:container-->
-	<!-- build:js script.js -->
 	<script src="js/jquery.js"></script>
 	<script src="js/bootstrap.js"></script>
 	<script src="js/nprogress.js"></script>
 	<script src="js/nouislider.js"></script>
-	<!-- endbuild -->
 	<script>
 		$(document).ready(function() {
 			console.log("Ready to rumble");
