@@ -5,7 +5,7 @@
 /* Move down content because we have a fixed navbar that is 50px tall */
 body {
   padding-top: 50px;
-	font-family: 'Roboto', sans-serif;
+  font-size: 15px;
 }
 
 /*
@@ -63,7 +63,7 @@ body {
 .nav-sidebar > .active > a:hover,
 .nav-sidebar > .active > a:focus {
   color: #fff;
-  background-color: #428bca;
+  background-color: #EB6536;
 }
 /*
  * Main content
@@ -99,16 +99,33 @@ div#container_time, div#container_hw  > div.list-group > div.list-group-item > d
 .input-group > .glyphicon {
 	top: 0px;
 }
-/*
- *
- */
+
 div#network_available > a.list-group-item {
 	cursor: pointer;
 }
+
+.navbar-brand {
+	font-weight:bold;
+}	
+
 /*
- * nouislider
+ * nouislider, match colors
  */
 .noUi-connect {
 	border-radius: 4px;
-	background: #428bca;
+	background: #EB6536;
+}
+
+/*
+ *nprogress, match colors
+ */
+#nprogress .bar {
+  background: #AEA79F;
+}
+#nprogress .peg {
+  box-shadow: 0 0 10px #AEA79F, 0 0 5px #AEA79F;
+}
+#nprogress .spinner-icon {
+  border-top-color: #AEA79F;
+  border-left-color: #AEA79F;
 }

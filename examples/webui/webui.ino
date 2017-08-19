@@ -1,6 +1,24 @@
+//https://github.com/putyn/webui
 #include <webui.h>
-//since this was defined in webui we make it external here
+
+/*
+ * settings from webui.h
+ * device settings from webui.h
+ */
 extern settings_t settings;
+extern device_t device;
+
+/*
+ * time
+ */
+ctime_t local_time;
+
+/*
+ * needed by the webui
+ */
+void hw_set_brightness(uint8_t brightness) {
+  
+}
 
 void setup() {
   //for debug reasonts
@@ -9,7 +27,7 @@ void setup() {
   //setup file system
   fs_setup();
   //set a nice hostname
-  sprintf(settings.hostname,"big_seven_%06X", ESP.getChipId());
+  sprintf(device.hostname,"webui_dev_%06X", ESP.getChipId());
 
   //setup wifi
   wifi_setup();
@@ -19,12 +37,12 @@ void setup() {
 }
 
 void loop() {
-  if(settings.reboot){
-    Serial.println("[WiFi] got restart request from the wire!");
-    settings.reboot = false;
+  if(device.reboot){
+    Serial.println("[SYS] got restart request from the wire!");
+    device.reboot = false;
     ESP.restart();
   }
-  if(settings.soft_ap){
+  if(device.soft_ap){
     webui_dns_requests();
   }
 }
