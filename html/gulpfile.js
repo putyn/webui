@@ -115,6 +115,10 @@ gulp.task('nixie', function (e) {
 gulp.task('build_fs', function (e) {
    runSequence('clean:build', 'gzip', 'files_fs', e);
 });
+/* watch files for faster developemnt */
+gulp.task('seven_watch', function() {
+  gulp.watch('src/index.html', ['seven']);
+});
 
 /* watch files for faster developemnt */
 gulp.task('seven_watch', function() {
