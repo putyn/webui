@@ -63,19 +63,19 @@ gulp.task('files_seven', function() {
 /* Preprocess file, for both variants, merge css and js */
 gulp.task('preproc_seven', function() {
   return gulp.src(['src/index.html'])
-  .pipe(preprocess({context: { VARIANT: 'seven', VARIANT_NAME: 'Big Seven', VARIANT_navbar: 'inverse'}}))
+  .pipe(preprocess({context: { VARIANT: 'seven', VARIANT_NAME: 'Big Seven'}}))
   .pipe(useref())
-  .pipe(gulpif('*.css', cleancss()))
-  .pipe(gulpif('*.js', uglify()))
+  /*.pipe(gulpif('*.css', cleancss()))*/
+  /*.pipe(gulpif('*.js', uglify()))*/
   .pipe(gulp.dest('dist'))
 });
 
 gulp.task('preproc_nixie', function() {
   return gulp.src(['src/index.html'])
-  .pipe(preprocess({context: { VARIANT: 'nixie', VARIANT_NAME:'NAKED Nixie', VARIANT_navbar: 'default'}}))
+  .pipe(preprocess({context: { VARIANT: 'nixie', VARIANT_NAME: 'NAKED Nixie'}}))
   .pipe(useref())
-  .pipe(gulpif('*.css', cleancss()))
-  .pipe(gulpif('*.js', uglify()))
+  /*.pipe(gulpif('*.css', cleancss()))*/
+  /*.pipe(gulpif('*.js', uglify()))*/
   .pipe(gulp.dest('dist'))
 });
 
