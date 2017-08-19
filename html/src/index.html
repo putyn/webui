@@ -5,8 +5,8 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-	<meta name="description" content="html5 bootstrap webui for ESP8266 clocks">
-	<meta name="author" content="Vlad Conut">
+	<meta name="description" content="html5 bootstrap webui for ESP8266 big seven or naked nixie">
+	<meta name="author" content="Vlad Conut <vladconut@gmail.com>">
   <!-- @if VARIANT='nixie' -->
   <meta name="theme-color" content="#F29879">
   <link rel="icon" href="img/favicon_nixie.ico">
@@ -17,18 +17,20 @@
   <link rel="icon" href="img/favicon_seven.ico">
   <title>Big Seven</title>
   <!-- @endif -->  
+  <!-- build:css css/styles.min.css -->
 	<link href="css/nouislider.css" rel="stylesheet">
 	<link href="css/nprogress.css" rel="stylesheet">
   <!-- @if VARIANT='nixie' -->
-    <link href="css/bootstrap_nixie.css" rel="stylesheet">
-    <link href="css/ubuntu.css" rel="stylesheet">
-    <link href="css/nixie.css" rel="stylesheet">
+  <link href="css/bootstrap_nixie.css" rel="stylesheet">
+  <link href="css/ubuntu.css" rel="stylesheet">
+  <link href="css/nixie.css" rel="stylesheet">
   <!-- @endif -->
   <!-- @if VARIANT='seven' -->
 	<link href="css/bootstrap_seven.css" rel="stylesheet">
 	<link href="css/roboto.css" rel="stylesheet">
 	<link href="css/seven.css" rel="stylesheet">
   <!-- @endif -->
+  <!-- endbuild -->
 </head>
 <body>
 	<nav class="navbar navbar-<!-- @echo VARIANT_navbar --> navbar-fixed-top">
@@ -204,6 +206,7 @@
 							</div>
 						</div>
 					</div>
+          <!-- @if VARIANT='nixie' -->
  					<label for="hardware_acp">Anti Cathode Poisoning</label>
 					<div class="list-group" id="hardware_acp">
 						<div class="list-group-item">
@@ -235,6 +238,7 @@
               </div>
             </div>
           </div>
+          <!-- @endif -->
 					<label for="hardware_nightmode">Night Mode</label>
 					<div class="list-group" id="hardware_nightmode">
 						<div class="list-group-item">
@@ -279,6 +283,7 @@
                 <div class="col-xs-8 col-xs-offset-4 col-md-9 col-md-offset-3 text-muted" style="padding-top:10px"><em>Allows for dimming the clock between selected interval, in order to not distrub.</em></div>  
               </div> 
 						</div>
+            <!-- @if VARIANT='nixie' -->
 						<div class="list-group-item">
 							<div class="row">
 								<div class="col-xs-4 col-md-3 text-right" style="padding-top:0px;"> <strong>Suppress ACP:</strong></div>
@@ -294,6 +299,7 @@
                 <div class="col-xs-8 col-xs-offset-4 col-md-9 col-md-offset-3 text-muted" style="padding-top:10px"><em>Disable ACP when night mode is on, you know not to disturb.</em></div>  
               </div>
             </div>
+            <!-- @endif -->
           </div>
 					<label for="hardware_fwupgrade">Firmware Upgrade</label>
 					<div class="list-group" id="hardware_fwupgrade">
@@ -320,10 +326,12 @@
       </div><!-- content:container:row -->
 		</div><!-- main:container:row -->
 	</div> <!-- main:container-->
+  <!-- build:js js/main.min.js -->
 	<script src="js/jquery.js"></script>
 	<script src="js/bootstrap.js"></script>
 	<script src="js/nprogress.js"></script>
 	<script src="js/nouislider.js"></script>
+  <!-- endbuild -->
 	<script>
 		$(document).ready(function() {
 			console.log("Ready to rumble");
@@ -549,12 +557,12 @@
         //pretty bar
         NProgress.start();
 
-        //get values
+        //get values, handle not existing fields
         var hw_brightness = $("#brightness_slider")[0].noUiSlider.get();
-        var hw_acp_time = $("#hw_acp_time").val();
+        var hw_acp_time = typeof($("#hw_acp_time").val()) == 'undefined' ? 0 : $("#hw_acp_time").val();
         var hw_nightmode_start = $("#hw_nightmode_start").val();
         var hw_nightmode_stop = $("#hw_nightmode_stop").val();
-        var hw_suppress_acp = $("#hw_suppress_acp").val();
+        var hw_suppress_acp = typeof($("#hw_suppress_acp").val()) == 'undefined' ? 0 : $("#hw_suppress_acp").val();
         
         //post values
         $.post("/hw", {"hw_brightness": hw_brightness, "hw_acp_time": hw_acp_time, "hw_nightmode_start": hw_nightmode_start, "hw_nightmode_stop": hw_nightmode_stop, "hw_suppress_acp": hw_suppress_acp}, function(data) {
