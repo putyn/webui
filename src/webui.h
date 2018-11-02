@@ -26,7 +26,7 @@ struct ctime_t {
 struct settings_t {
 	//time server, to add length check in ui
   char time_server[32];	
-  //saved brightness leve, between 0(lowest) -- 10(highest) 
+  //saved brightness level, between 0(lowest) -- 10(highest) 
   uint8_t brightness;
   //how often should ACP run min is 5 mins	
   uint8_t acp_time;
@@ -54,6 +54,7 @@ struct device_t {
   boolean update_display;
   boolean update_time;
   boolean reboot;
+  boolean test_wifi;
   boolean online;
   boolean soft_ap;
 };
@@ -65,7 +66,7 @@ struct device_t {
  * DNS
  * NTP requests
  */
-void wifi_setup();
+void wifi_setup(boolean test_wifi);
 void web_setup();
 void fs_setup();
 void webui_dns_requests();

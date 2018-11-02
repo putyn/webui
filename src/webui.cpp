@@ -3,8 +3,9 @@ extern "C" {
 	#include "user_interface.h"
 }
 
-//web server and dns server
+//web server, SSE and dns server
 AsyncWebServer server(80);
+AsyncEventSource events("/events");
 DNSServer dns_server;
 
 wifi_settings_t wifi;
@@ -12,61 +13,161 @@ settings_t settings;
 device_t device;
 extern ctime_t local_time;
 
-void wifi_setup() {
+void wifi_setup(boolean test_wifi) {
 	
   //nice hostname
   WiFi.hostname(device.hostname);
+  //don't save credentials -- might not actually solve the problem
+  WiFi.persistent(false);
+  //might not be needed
+  WiFi.disconnect();
+  //response for testing of wifi
+  String wifi_json_resp;
+
+  
+  //determin what we need to do
+  if (SPIFFS.exists("/test_wifi.dat") && test_wifi) {   
+    goto wifi_test_mode;
+  } else if (SPIFFS.exists("/wifi.dat") || SPIFFS.exists("/new_wifi.dat")) {
+    goto wifi_sta_mode;
+  } else {
+    //if none of the above, go to AP mode
+    goto wifi_ap_mode;
+  }
+  
+wifi_test_mode:
+
+  Serial.println(F("[WiFi] we have some WiFi credentials to test!"));
+  
+  wifi_json_resp = "";
+  //read credentials
+  read_file((char *)"/test_wifi.dat", (byte *)&wifi, sizeof(struct wifi_settings_t));
+  Serial.printf("[WiFI] wifi ssid: %s, wifi pass: %s\n", wifi.ssid, wifi.pass);
+  
+  //set wifi mode
+  WiFi.mode(WIFI_AP_STA);
+  
+  //connect to newtwork
+  WiFi.begin(wifi.ssid, wifi.pass);
+  
+  if(WiFi.waitForConnectResult() == WL_CONNECTED) {
+    Serial.printf("[WiFi] successfully connected to tested ssid: %s\n", WiFi.SSID().c_str());
+    Serial.printf("[WiFi] IP addess: %s\n", WiFi.localIP().toString().c_str());
+    
+    //prepare SSE to client
+    wifi_json_resp = "{\"error\":false,\"message\":\""+ WiFi.SSID() +"\", \"ip\":\""+ WiFi.localIP().toString() +"\"}";  
+    //rename test_wifi to new_wifi
+    SPIFFS.rename("/test_wifi.dat","/new_wifi.dat");
+    goto wifi_sta_mode;
+    
+  } else {
+    //remove test_wifi
+    SPIFFS.remove("/test_wifi.dat");
+    
+    if(WiFi.status() == WL_CONNECT_FAILED) {
+      Serial.printf("[WiFi] test connection to %s failed, bad password\n", wifi.ssid);
+      wifi_json_resp = wifi_json_resp = "{\"error\":true,\"message\":\"Incorrect password, please try again!\"}";
+    } else {
+      Serial.printf("[WiFi] test connection to %s failed, reason %u\n", wifi.ssid, WiFi.status());
+      wifi_json_resp = wifi_json_resp = "{\"error\":true,\"message\":\"Unexpected error, please try again!\"}";
+    }
+    goto wifi_sta_mode;
+  }
+  goto wifi_end;
+  
+wifi_sta_mode:
+
+  //check if we have new_wifi, but skip if we are in test mode
+  if (SPIFFS.exists("/new_wifi.dat") && !test_wifi) {
+    Serial.println(F("[WiFi] got new wifi settings, gonna use them from now."));
+    if(SPIFFS.exists("/wifi.dat"))
+      SPIFFS.remove("/wifi.dat");
+    SPIFFS.rename("/new_wifi.dat","/wifi.dat");
+  }
+  //sanity check in case we got here from wifi_test_mode but we are in WIFI_AP
+  if (!SPIFFS.exists("/wifi.dat"))
+      goto wifi_ap_mode;
+
+  Serial.println(F("[WiFi] we have some WiFi credentials to use!"));
+  
+  //read credentials
+  read_file((char *)"/wifi.dat", (byte *)&wifi, sizeof(struct wifi_settings_t));
+  Serial.printf("[WiFI] wifi ssid: %s, wifi pass: %s\n", wifi.ssid, wifi.pass);
+  
+  //set wifi mode
   WiFi.mode(WIFI_STA);
   
-  //check to see if we have config file
-  Serial.println();
-  Serial.println(F("[WiFi] checking to see if we have new config..."));
-  if (SPIFFS.exists("/wifi.dat")) {
-    //read wifi settings from file
-    read_file((char *)"/wifi.dat", (byte *)&wifi, sizeof(struct wifi_settings_t));
-    WiFi.begin(wifi.ssid, wifi.pass);
-    //remove config
-    SPIFFS.remove("/wifi.dat");
-  } else {
-    //try to connect to previous network if any else start in AP mode
-    Serial.println(F("[WiFi] connecting to existing network..."));
-    WiFi.begin();
-  }
-
-  if (WiFi.waitForConnectResult() == WL_CONNECTED) {
+  //connect to newtwork
+  WiFi.begin(wifi.ssid, wifi.pass);
+  
+  if(WiFi.waitForConnectResult() == WL_CONNECTED) {
     Serial.printf("[WiFi] successfully connected to ssid: %s\n", WiFi.SSID().c_str());
     Serial.printf("[WiFi] IP addess: %s\n", WiFi.localIP().toString().c_str());
+    
+    if(wifi_json_resp.length())
+      events.send(wifi_json_resp.c_str(), "wifi", millis());
+    
+    //we finished here
+    goto wifi_end;
+    
   } else {
-    Serial.println(F("[WiFi] configuring access point..."));
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.disconnect();
-    if (WiFi.softAP(device.hostname)) {
-      
-      Serial.printf("[WiFi] successfully created access point: %s\n", device.hostname);
-      Serial.printf("[WiFi] IP addess: %s\n", WiFi.softAPIP().toString().c_str());
-      
-      //start DNS server for easier configuration
-      Serial.println(F("[WiFi] starting DNS server"));
-      dns_server.start(53, "*", WiFi.softAPIP());
-      device.soft_ap = true;
-      
-    } else {
-      Serial.println(F("[WiFi] something failed, halting"));
-      while (1);
-    }
+    if (WiFi.status() == WL_NO_SSID_AVAIL)
+      Serial.println(F("[WiFI] got credentials, but ssid not avilable"));
+    
+    //got to AP mode
+    goto wifi_ap_mode;
+  }
+  goto wifi_end;
+     
+wifi_ap_mode:
+  Serial.println(F("[WiFi] configuring access point!"));
+  WiFi.mode(WIFI_AP_STA);
+    
+  if (WiFi.softAP(device.hostname)) {
+    
+    Serial.printf("[WiFi] successfully created access point: %s\n", device.hostname);
+    Serial.printf("[WiFi] IP addess: %s\n", WiFi.softAPIP().toString().c_str());
+    
+    //send SSE if we have
+    if(wifi_json_resp.length())
+      events.send(wifi_json_resp.c_str(), "wifi", millis());
+    
+    //start DNS server for easier configuration
+    Serial.println(F("[WiFi] starting DNS server"));
+    dns_server.start(53, "*", WiFi.softAPIP());
+    device.soft_ap = true;
+    
+  } else {
+    Serial.println(F("[WiFi] something failed, halting"));
+    while (1);
   }
   
+wifi_end:  
   WiFi.scanNetworks(1);
   Serial.println(F("[WiFi] starting network scanning async"));
+  
 }
 
 void web_setup() {
-	
+  
+	//reset
 	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest * request ) {
 		device.reboot = true;
 		request->redirect("/");
 	});
-	
+  
+  //factory reset
+	server.on("/factory", HTTP_GET, [](AsyncWebServerRequest * request ) {
+    
+    Serial.println(F("[FS] got request to delete setttings!"));
+		SPIFFS.remove("/new_wifi.dat");
+		SPIFFS.remove("/test_wifi.dat");
+    SPIFFS.remove("/wifi.dat");
+    SPIFFS.remove("/settings.dat");
+    device.reboot = true;
+    request->redirect("/");
+	});
+  
 	server.on("/overview", HTTP_GET,  handle_overview);
 	server.on("/wifi", HTTP_GET,  handle_wifi);
 	server.on("/time", HTTP_GET,  handle_time);
@@ -75,7 +176,13 @@ void web_setup() {
 	server.on("/time", HTTP_POST,  handle_time_save);
 	server.on("/hw", HTTP_POST,  handle_hw_save);
 	server.serveStatic("/", SPIFFS, "/").setCacheControl("max-age:600");
-
+  
+  events.onConnect([](AsyncEventSourceClient *client){
+    //send event with message "hello!", id current millis and set reconnect delay to 1 second
+    client->send("SSE ftw!",NULL,millis(),1000);
+  });
+  
+  server.addHandler(&events);
 	Serial.println(F("[HTTP] Starting HTTP server"));
 	server.begin();
 }
@@ -89,6 +196,7 @@ void webui_dns_requests()  {
 
 void fs_setup() {
 	
+	Serial.println();
 	Serial.println();
 	if (SPIFFS.begin()) {
 		Serial.println(F("[FS] file system opened, generating file list"));
@@ -158,8 +266,9 @@ void handle_wifi_save(AsyncWebServerRequest *request) {
     strncpy(wifi.ssid, request->getParam("ssid", true)->value().c_str(), sizeof (wifi.ssid));
     strncpy(wifi.pass, request->getParam("pass", true)->value().c_str(), sizeof (wifi.pass));
 
-    if (save_file((char *)"/wifi.dat", (byte *)&wifi, sizeof(struct wifi_settings_t))) {
+    if (save_file((char *)"/test_wifi.dat", (byte *)&wifi, sizeof(struct wifi_settings_t))) {
       json_resp = F("{\"error\":0, \"message\": \"Settings saved, reboot to load new network config\"}");
+      device.test_wifi = true;
     } else {
       json_resp = F("{\"error\":1, \"message\": \"Settings could not be saved\"}");
     }

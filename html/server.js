@@ -25,16 +25,31 @@ SOFTWARE.
 var express = require('express');
 var argv = require('minimist')(process.argv.slice(2));
 var app = express();
+//Server Sent Event https://www.terlici.com/2015/12/04/realtime-node-expressjs-with-sse.html
+var sse = require('./sse')
+app.use(sse)
+var connections = []
 
 var bodyParser = require('body-parser');
 app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
-
 app.use(express.static(__dirname + '/dist'));
 var status_code = argv['c'] ? argv['c'] : 200;
 var random_wait = argv['w'] ? argv['w'] : 100;
 
+//SSE
+
+function sse_send(data) {
+  for(var i = 0; i < connections.length; i++) {
+    connections[i].sseSend(data)
+  }
+}
+ 
+app.get('/events', function(req, res) {
+  res.sseSetup();
+  connections.push(res);
+})
 
 app.get("/overview", function(req,res) {
 	var  json_response = {};
@@ -54,7 +69,7 @@ app.get("/overview", function(req,res) {
 		res.json(json_response);
 	}, random_wait * Math.random());
 
-	console.log("[GET] /overview");
+  console.log("[GET] /overview");
 });
 
 
@@ -74,7 +89,7 @@ app.get("/wifi", function(req,res) {
 		res.status(status_code);
 		res.json(json_response);
 	}, random_wait * Math.random());
-
+  
 	console.log("[GET] /wifi");
 });
 
@@ -111,12 +126,21 @@ app.post("/wifi", function(req, res) {
 	var pass = req.body.pass;
 	var json_response;
 
+  wait_time = random_wait * Math.random()
+  
 	//fail response
 	if( pass.length == 0 || ssid.length == 0)
 		json_response = {"error": true, "message": "Password can't be empty!"};
 	else {
 		//success response
-		json_response = {"error": false, "message": "http://localhost:8080/#wifi"};
+		json_response = {"error": false, "message": ""};
+    
+    //simulate wifi test
+    setTimeout(function (){
+        //sse_resp = {'error': true, 'message': 'Password Incorrect, please try again'};
+        sse_resp = {'error': false, 'message': ssid, 'ip': 'localhost:8081'};
+        sse_send(sse_resp)
+    }, wait_time + 4000);
 	}
 
 	//insert some random wait
@@ -124,15 +148,15 @@ app.post("/wifi", function(req, res) {
 		//simulate .fail on front end side via http code
 		res.status(status_code);
 		res.json(json_response);
-	}, random_wait * Math.random());
-
-	console.log("[POST] /wifi - SSID: " + ssid + ", password: " + pass);
+	}, wait_time);
+  
+	console.log("[POST] /wifi " + JSON.stringify(req.body));
 });
 
 app.post("/time", function(req,res) {
 
 	//POST variables from request
-	var ntp_server = req.body.time_server;
+	var time_server = req.body.time_server;
 	var time_zone = req.body.time_zone;
 	var time_dst = req.body.time_dst;
 	var time_system_time = req.body.time_system_time
@@ -141,7 +165,7 @@ app.post("/time", function(req,res) {
 	//fail response
 	json_response = {"error": true, "message": "can't save config file on flash"};
 	//success response, not sure if sending data back is required
-	json_response = {"error": false, "message": "", "time_server": ntp_server, "time_zone": time_zone, "time_dst": time_dst};
+	json_response = {"error": false, "message": "", "time_server": time_server, "time_zone": time_zone, "time_dst": time_dst};
 
 	//insert some random wait
 	setTimeout( function () {
@@ -149,7 +173,7 @@ app.post("/time", function(req,res) {
 		res.status(status_code);
 		res.json(json_response);
 	}, random_wait * Math.random());
-	console.log("[POST] /time ntp server: "+ntp_server+", time zone: "+time_zone+", dst: "+time_dst+", system time:" + time_system_time);
+	console.log("[POST] /time " + JSON.stringify(req.body));
 });
 
 app.get("/hw", function(req,res) {
@@ -181,8 +205,9 @@ app.post("/hw", function (req, res) {
 		res.json(json_response);
 	}, random_wait * Math.random());
 	
-	console.log("[POST] /hw brightness: "+hw_brightness+", hw_acp_time: "+hw_acp_time+", hw_nightmode_start: "+hw_nightmode_start+", hw_nightmode_stop:" + hw_nightmode_stop + ", hw_suppress_acp: " + hw_suppress_acp);
+	console.log("[POST] /hw " + JSON.stringify(req.body));
 });
 
 app.listen(8080);
-console.log('Application server up and running on port 8080');
+app.listen(8081);
+console.log('Application server up and running on port 8080 and 8081');

@@ -100,7 +100,7 @@
                   <div class="hidden" id="body_post_request"></div>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                  <button type="button" class="btn btn-default" data-dismiss="modal" id="btn_close_modal">Close</button>
                   <button type="button" class="btn btn-primary" id="btn_save">Save</button>
                 </div>
               </div>
@@ -343,6 +343,45 @@
     $(document).ready(function() {
       console.log("Ready to rumble");
       
+      if (!!window.EventSource) {
+        var source = new EventSource('/events');
+
+        source.addEventListener('open', function(e) {
+          console.log("[SEE] events connected");
+        }, false);
+
+        source.addEventListener('error', function(e) {
+          if (e.target.readyState != EventSource.OPEN) {
+            console.log("[SEE] events disconnected");
+          }
+        }, false);
+
+        source.addEventListener('wifi', function(e) {
+          
+          data = JSON.parse(e.data);
+          console.log("[SEE] " + JSON.stringify(data));
+          
+          if (data.error) {
+            $("#body_post_request").html("<div class=\"list-group\"><div class=\"list-group-item list-group-item-danger\"><strong>Connection error:</strong><br/>"+data.message+"</div></div>").removeClass("hidden").show();  
+          } else {
+            $("#body_post_request").html("<div class=\"list-group\"><div class=\"list-group-item list-group-item-success\">Successfully connected to<strong> "+data.message+"</strong><br/> After closing this window, device will reboot and you will be redirected to its new address.</div></div>").removeClass("hidden").show();
+            
+            //bind reboot/redirect on the dismisall of the modal
+            $('#btn_close_modal').on('click', function() {
+              
+              //request a reboot, to use the new wifi data, just redirect to new IP since CORSS is PIA
+              $.get("/reboot", function() {
+                console.log("['HW'] Sent reboot request");
+              }).always( function () {
+                window.location = "http://" + data.ip + "/#wifi";
+              });
+            });
+          }
+          clearInterval(dot_interval)
+        }, false);
+      } else {
+        console.log("[SEE]Server Sent Event not supported, please update browser")
+      }
       //pretty bar without  spinner
       NProgress.configure({
         showSpinner: false
@@ -369,11 +408,10 @@
       
       //send update to BE only on change event
       $("#brightness_slider")[0].noUiSlider.on("change", function(values, handle) {
-        console.log("Brightness value: " + values[handle]);
         $("#brightness_slider_val").html("<em>Current level: <strong>" + values[handle] + "</strong></em>");
         $.post("/hw", {"hw_brightness": values[handle] }, function(data) {
           //log the response
-          console.log(data);
+          console.log("[HW] " + JSON.stringify(data));
         }, "json");
       });
       $("#brightness_slider")[0].noUiSlider.on("slide", function(values, handle) {
@@ -444,10 +482,10 @@
         
         if($("#btn_toggle_password").hasClass("glyphicon-eye-close"))
           $("#btn_toggle_password").click();
-        //show modal with keyboard for mobile devices
-        $("#network_setup").modal({
-          keyboard: true
-        });
+          //show modal with keyboard for mobile devices
+          $("#network_setup").modal({
+            keyboard: true
+          });
       });
       
       //focus password input after modal
@@ -460,7 +498,6 @@
         if($(this).hasClass("glyphicon-eye-open")) {
           $(this).removeClass("glyphicon-eye-open").addClass("glyphicon-eye-close");
           $("#network_password").attr("type", "text");
-          
         } else {
           $(this).removeClass("glyphicon-eye-close").addClass("glyphicon-eye-open");
           $("#network_password").attr("type", "password");
@@ -508,7 +545,18 @@
           if(data.error) {
             $("#body_post_request").html("<div class=\"list-group\"><div class=\"list-group-item list-group-item-warning\"><strong>Fool!</strong> "+data.message+"</div></div>").removeClass("hidden").show();
           } else {
-            $("#body_post_request").html("<div class=\"list-group\"><div class=\"list-group-item list-group-item-success\">Settings saved for network <strong>"+network_ssid+"</strong>, after reboot connect to the same network to configure the device!</div></div>").removeClass("hidden").show();
+            $("#body_post_request").html("<div class=\"list-group\"><div class=\"list-group-item list-group-item-success\">Settings for network <strong>"+network_ssid+"</strong> sent to device, wait for connection to be tested. </div></div>").removeClass("hidden").show();
+            //dot animation
+            dot_interval_start = (Math.floor(Date.now() / 1000));
+            dot_interval = setInterval(function(){
+              $("#body_post_request > div > div").append(". ");
+              
+              if ((Math.floor(Date.now() / 1000) - dot_interval_start)  > 120) {
+                  console.log("[WiFi] test has failed, after 120 seconds!");
+                  $("#body_post_request").html("<div class=\"list-group\"><div class=\"list-group-item list-group-item-warning\">Test for network <strong>"+network_ssid+"</strong> has timedout! Please try again.</div></div>").removeClass("hidden").show();
+                  clearInterval(dot_interval);
+              }              
+            }, 1000);
           }
           //hide button
           $("#btn_save").hide();
@@ -532,9 +580,9 @@
         NProgress.start();
         
         //get values
-        var  time_server = $("#time_server").val();
-        var  time_zone = $("#time_zone").val();
-        var  time_dst = $("#time_dst").val();
+        var time_server = $("#time_server").val();
+        var time_zone = $("#time_zone").val();
+        var time_dst = $("#time_dst").val();
         var time_system_time = 0;
         
         if($("#time_system_update").is(":checked")) {
@@ -550,13 +598,13 @@
           } else {
             $("#time_error").html("<div class=\"list-group-item list-group-item-success\"><strong>Well done!</strong> Settings saved!</div>");
           }
+          //log for debug
+          console.log("[TIME] " + JSON.stringify(data));
         }, "json").fail( function(xhr, status, error) {
           $("#time_error").html("<div class=\"list-group-item list-group-item-danger\"><strong>Oh Snap!</strong>  Something went wrong: <strong>"+xhr.status+" (" + error + ")</strong></div>");
         }).always( function () {
             NProgress.done();
         });
-        //debug info
-        console.log("time: " + time_server + ", " + time_zone + ", " + time_dst);
       });
       
       //bind hw settings
@@ -579,14 +627,13 @@
           } else {
               $("#hw_error").html("<div class=\"list-group-item list-group-item-success\"><strong>Well done!</strong> Settings saved!</div>");
           }
+          //log for debug
+          console.log("[HW] " + JSON.stringify(data));
         }, "json").fail( function(xhr, status, error) {
           $("#hw_error").html("<div class=\"list-group-item list-group-item-danger\"><strong>Oh Snap!</strong>  Something went wrong: <strong>"+xhr.status+" (" + error + ")</strong></div>");
         }).always( function () {
             NProgress.done();
         });
-        
-        //debug info
-        console.log("hw: " + hw_brightness + ", " + hw_acp_time + ", " + hw_nightmode_start + ", " + hw_nightmode_stop + ", " + hw_suppress_acp);
       }); 
   });
   //dynamic load
@@ -620,7 +667,7 @@
           $.each(data.status, function(item_name, item_value) {
               html_elements.push('<div class="list-group-item"><div class="row">');
               html_elements.push('<div class="col-xs-4 col-md-3 text-right"><strong>' + item_name + ":</strong></div>");
-              html_elements.push('<div class="col-xs-8 col-md-9 text-left">' + item_value + "</div>");
+              html_elements.push('<div class="col-xs-8 col-md-9 text-left" style="word-wrap: break-word">' + item_value + "</div>");
               html_elements.push("</div></div>");
             }),
             $("#network_status").html(html_elements.join(""));
